@@ -1,0 +1,20 @@
+services:
+  asterisk:
+    image: andrius/asterisk:18
+    container_name: asterisk18
+    restart: unless-stopped
+
+    ports:
+      - "5060:5060/udp"
+      - "5060:5060/tcp"
+      - "10000-10100:10000-10100/udp"
+
+    volumes:
+      - ./config/pjsip.conf:/etc/asterisk/pjsip.conf
+      - ./config/extensions.conf:/etc/asterisk/extensions.conf
+      - ./config/rtp.conf:/etc/asterisk/rtp.conf
+
+    stdin_open: true
+    tty: true
+
+    command: asterisk -fvvv
