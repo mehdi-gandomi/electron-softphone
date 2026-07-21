@@ -1,45 +1,47 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ['./src/renderer/**/*.{ts,tsx,html}'],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
         bg: {
-          DEFAULT: '#0F0E17',
-          surface: '#1A1928',
-          'surface-2': '#232136',
-          'surface-3': '#2C2A3E',
+          DEFAULT: 'rgb(var(--c-bg) / <alpha-value>)',
+          surface: 'rgb(var(--c-bg-surface) / <alpha-value>)',
+          'surface-2': 'rgb(var(--c-bg-surface-2) / <alpha-value>)',
+          'surface-3': 'rgb(var(--c-bg-surface-3) / <alpha-value>)',
         },
         text: {
-          DEFAULT: '#FFFFFE',
-          secondary: '#A7A9BE',
-          muted: '#6B6D80',
+          DEFAULT: 'rgb(var(--c-text) / <alpha-value>)',
+          secondary: 'rgb(var(--c-text-secondary) / <alpha-value>)',
+          muted: 'rgb(var(--c-text-muted) / <alpha-value>)',
         },
         accent: {
-          DEFAULT: '#7F5AF0',
-          hover: '#6B46E5',
-          glow: 'rgba(127, 90, 240, 0.25)',
-          dim: 'rgba(127, 90, 240, 0.10)',
+          DEFAULT: 'rgb(var(--c-accent) / <alpha-value>)',
+          hover: 'rgb(var(--c-accent-hover) / <alpha-value>)',
+          glow: 'var(--c-accent-glow)',
+          dim: 'var(--c-accent-dim)',
         },
         success: {
-          DEFAULT: '#2CB67D',
-          glow: 'rgba(44, 182, 125, 0.25)',
+          DEFAULT: 'rgb(var(--c-success) / <alpha-value>)',
+          glow: 'var(--c-success-glow)',
         },
         error: {
-          DEFAULT: '#E53170',
-          glow: 'rgba(229, 49, 112, 0.25)',
+          DEFAULT: 'rgb(var(--c-error) / <alpha-value>)',
+          glow: 'var(--c-error-glow)',
         },
         warning: {
-          DEFAULT: '#FF8906',
-          glow: 'rgba(255, 137, 6, 0.25)',
+          DEFAULT: 'rgb(var(--c-warning) / <alpha-value>)',
+          glow: 'var(--c-warning-glow)',
         },
         border: {
-          DEFAULT: 'rgba(255, 255, 255, 0.06)',
-          hover: 'rgba(255, 255, 255, 0.12)',
+          DEFAULT: 'var(--c-border)',
+          hover: 'var(--c-border-hover)',
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['Vazirmatn', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        vazir: ['Vazirmatn', 'sans-serif'],
         mono: ['JetBrains Mono', 'SF Mono', 'monospace'],
       },
       borderRadius: {
@@ -48,10 +50,13 @@ module.exports = {
         '3xl': '24px',
       },
       boxShadow: {
-        'glow-accent': '0 0 20px rgba(127, 90, 240, 0.3)',
-        'glow-success': '0 0 20px rgba(44, 182, 125, 0.3)',
-        'glow-error': '0 0 20px rgba(229, 49, 112, 0.3)',
+        'glow-accent': '0 0 20px var(--c-accent-glow)',
+        'glow-success': '0 0 20px var(--c-success-glow)',
+        'glow-error': '0 0 20px var(--c-error-glow)',
         'glass': '0 8px 32px rgba(0, 0, 0, 0.4)',
+        // "Real phone" device frame shadows
+        'phone': '0 30px 60px -15px rgba(0, 0, 0, 0.55), 0 10px 24px -8px rgba(0, 0, 0, 0.35)',
+        'phone-screen': 'inset 0 2px 10px rgba(0, 0, 0, 0.35)',
       },
       backdropBlur: {
         'glass': '12px',

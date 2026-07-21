@@ -93,7 +93,7 @@ export function DialPad() {
       )}
       {sipStatus === 'connecting' && (
         <div className="w-full max-w-[320px] px-3 py-2 rounded-xl bg-warning/10 border border-warning/30 text-warning text-xs text-center">
-          Registering with SIP server...
+          در حال ثبت در سرور SIP...
         </div>
       )}
       {callError && (
@@ -105,9 +105,9 @@ export function DialPad() {
       {/* Number display */}
       <div className="w-full text-center">
         <div className="min-h-[48px] flex items-center justify-center">
-          <span className="text-3xl font-mono font-medium tracking-wider text-text break-all">
+          <span className="text-3xl font-mono font-medium tracking-wider text-text break-all" dir="ltr">
             {number ? formatNumber(number) : (
-              <span className="text-text-muted text-lg">Enter number</span>
+              <span className="text-text-muted text-lg font-vazir">شماره را وارد کنید</span>
             )}
           </span>
         </div>
@@ -116,7 +116,7 @@ export function DialPad() {
             onClick={handleClear}
             className="text-xs text-text-muted hover:text-text-secondary mt-1 transition-colors"
           >
-            Clear
+            پاک کردن
           </button>
         )}
       </div>
@@ -161,7 +161,7 @@ export function DialPad() {
           disabled={!canCall}
           title={
             sipStatus !== 'registered'
-              ? 'Register with SIP server first (see Settings → Debug)'
+              ? 'ابتدا در سرور SIP ثبت شوید (تنظیمات ← اشکال‌زدایی)'
               : undefined
           }
           className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg ${
@@ -182,7 +182,7 @@ export function DialPad() {
 
       {sipStatus !== 'registered' && (
         <p className="text-[11px] text-text-muted text-center max-w-[280px]">
-          Status: {sipStatus}. Open Settings → Debug to see SIP errors, or Settings → Account to reconnect.
+          وضعیت: {sipStatus}. برای مشاهده خطاهای SIP به تنظیمات ← اشکال‌زدایی بروید، یا از تنظیمات ← حساب دوباره متصل شوید.
         </p>
       )}
     </div>

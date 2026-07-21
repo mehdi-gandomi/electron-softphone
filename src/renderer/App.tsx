@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 import { AppShell } from './components/layout/AppShell'
-import { DialPad } from './components/dialpad/DialPad'
+import { PhoneFrame } from './components/layout/PhoneFrame'
+import { PhoneTabs } from './components/phone/PhoneTabs'
+import { ThemeProvider } from './lib/theme'
+import { initNotifications, notifyIncomingCall, closeIncomingCallNotification } from './lib/notifications'
 import { ContactList } from './components/contacts/ContactList'
 import { CallHistory } from './components/history/CallHistory'
 import { Settings } from './components/settings/Settings'
@@ -67,6 +70,9 @@ export default function App() {
     const api = window.api
     if (!api) return
 
+    // Request notification permission on app load (incoming-call alerts)
+    initNotifications()
+
     const onRegStatus = (...args: unknown[]) => {
       const info = args[0] as RegistrationInfo
       useSipStore.getState().setStatus(info.status, info.expires, info.errorMessage)
@@ -76,6 +82,8 @@ export default function App() {
       const call = args[0] as CallInfo
       setIncomingCall(call)
       addCall(call)
+      // OS-level notification with caller ID (background alerting)
+      notifyIncomingCall(call)
     }
 
     const onOutgoingCall = (...args: unknown[]) => {
@@ -116,6 +124,7 @@ export default function App() {
       if (data.state === 'ended') {
         const incoming = useCallStore.getState().incomingCall
         if (incoming?.id === data.callId) setIncomingCall(null)
+        closeIncomingCallNotification()
         setTimeout(() => removeCall(data.callId), 1500)
       }
     }
@@ -154,18 +163,22 @@ export default function App() {
   }, [])
 
   return (
-    <div className="h-screen flex flex-col bg-bg overflow-hidden">
-      <AppShell page={page} onNavigate={(p) => setPage(p as Page)}>
-        {page === 'dialpad' && <DialPad />}
-        {page === 'contacts' && <ContactList />}
-        {page === 'history' && <CallHistory />}
-        {page === 'settings' && <Settings />}
-        {page === 'autofill' && <AutoFillForm />}
-      </AppShell>
+    <ThemeProvider>
+      <div className="h-screen overflow-hidden" dir="rtl">
+        <PhoneFrame>
+          <AppShell page={page} onNavigate={(p) => setPage(p as Page)}>
+            {page === 'dialpad' && <PhoneTabs />}
+            {page === 'contacts' && <ContactList />}
+            {page === 'history' && <CallHistory />}
+            {page === 'settings' && <Settings />}
+            {page === 'autofill' && <AutoFillForm />}
+          </AppShell>
+        </PhoneFrame>
 
-      <ActiveCall />
-      <IncomingCall />
-      <CallAudio />
-    </div>
+        <ActiveCall />
+        <IncomingCall />
+        <CallAudio />
+      </div>
+    </ThemeProvider>
   )
 }

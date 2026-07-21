@@ -27,9 +27,9 @@ function createWindow() {
     show: false,
   })
 
-  // Allow microphone for softphone audio
+  // Allow microphone for softphone audio + notifications for incoming-call alerts
   session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
-    if (permission === 'media' || permission === 'mediaKeySystem') {
+    if (permission === 'media' || permission === 'mediaKeySystem' || permission === 'notifications') {
       callback(true)
       return
     }
