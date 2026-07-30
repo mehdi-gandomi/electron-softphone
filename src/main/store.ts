@@ -32,6 +32,11 @@ const defaults: AppSettings = {
   screenPop: buildDefaults.screenPop,
   socketServer: buildDefaults.socketServer,
   developerOverrides: false,
+  userAccess: {
+    status: 'needs_login',
+    profile: null,
+    selectedExtensionId: '',
+  },
 }
 
 const store = new Store<AppSettings>({ name: 'voxphone-settings', defaults })
@@ -58,6 +63,17 @@ export function getSettings(): AppSettings {
   if (typeof settings.developerOverrides !== 'boolean') {
     settings.developerOverrides = false
     store.set('developerOverrides', false)
+  }
+  if (!settings.userAccess) {
+    settings.userAccess = {
+      status: 'needs_login',
+      profile: null,
+      selectedExtensionId: '',
+    }
+    store.set('userAccess', settings.userAccess)
+  } else if (typeof settings.userAccess.selectedExtensionId !== 'string') {
+    settings.userAccess.selectedExtensionId = ''
+    store.set('userAccess', settings.userAccess)
   }
   if (settings.locale !== 'fa' && settings.locale !== 'en') {
     settings.locale = 'fa'

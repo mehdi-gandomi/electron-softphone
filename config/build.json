@@ -33,5 +33,58 @@
     "host": "127.0.0.1",
     "port": 3920,
     "authToken": ""
-  }
+  },
+  "auth": {
+    "enabled": true,
+    "mockUser": {
+      "nationalCode": "0012345678",
+      "password": "1234",
+      "firstName": "مهدی",
+      "lastName": "احمدی",
+      "imageUrl": "",
+      "shiftHour": "08:00-16:00",
+      "startDateTime": "2026-07-30 08:00",
+      "endDateTime": "2026-07-30 16:00",
+      "position": "اپراتور"
+    },
+    "conflict": {
+      "enabled": true,
+      "pcName": "Dispatch-PC-03",
+      "ipAddress": "192.168.1.45",
+      "location": "Tehran Center",
+      "lastSeen": "2026-07-30 10:40"
+    }
+  },
+  "extensions": [
+    {
+      "id": "tehran-101",
+      "label": "تهران - 101",
+      "province": "تهران",
+      "extension": "101",
+      "host": "192.168.1.10",
+      "password": "secret101",
+      "displayName": "تهران 101",
+      "registeredElsewhere": false
+    },
+    {
+      "id": "alborz-102",
+      "label": "البرز - 102",
+      "province": "البرز",
+      "extension": "102",
+      "host": "192.168.1.11",
+      "password": "secret102",
+      "displayName": "البرز 102",
+      "registeredElsewhere": true
+    },
+    {
+      "id": "isfahan-103",
+      "label": "اصفهان - 103",
+      "province": "اصفهان",
+      "extension": "103",
+      "host": "192.168.1.12",
+      "password": "secret103",
+      "displayName": "اصفهان 103",
+      "registeredElsewhere": false
+    }
+  ]
 }

@@ -90,7 +90,7 @@ export function ContactList() {
           filtered.map((contact) => (
             <div
               key={contact.id}
-              className="flex items-center gap-3 p-3 rounded-xl hover:bg-bg-surface border border-transparent hover:border-border transition-all duration-150 group cursor-pointer"
+              className="flex items-center gap-3 p-3 rounded-xl hover:bg-bg-surface border border-transparent hover:border-border transition-all duration-150 cursor-pointer"
               onClick={() => handleCall(contact.number)}
             >
               <div className="w-10 h-10 rounded-full bg-accent/15 flex items-center justify-center text-sm font-semibold text-accent flex-shrink-0">
@@ -100,7 +100,7 @@ export function ContactList() {
                 <p className="text-sm font-medium text-text truncate">{contact.name}</p>
                 <p className="text-xs text-text-secondary font-mono truncate">{contact.number}</p>
               </div>
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); handleCall(contact.number) }}

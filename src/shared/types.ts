@@ -130,6 +130,35 @@ export interface AppSettings {
    * Set true after a developer unlocks and saves those sections.
    */
   developerOverrides: boolean
+  userAccess: UserAccessState
+}
+
+export interface UserProfile {
+  nationalCode: string
+  firstName: string
+  lastName: string
+  imageUrl: string
+  shiftHour: string
+  startDateTime: string
+  endDateTime: string
+  position: string
+}
+
+export interface UserAccessState {
+  status: 'needs_login' | 'skipped' | 'logged_in'
+  profile: UserProfile | null
+  selectedExtensionId: string
+}
+
+export interface ExtensionInfo {
+  id: string
+  label: string
+  province: string
+  extension: string
+  host: string
+  password: string
+  displayName: string
+  registeredElsewhere: boolean
 }
 
 export interface SocketServerSettings {
