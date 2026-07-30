@@ -1,0 +1,14 @@
+---
+description: Main-process conventions for Electron services, IPC, SIP, and persistence
+globs: src/main/**/*.ts
+alwaysApply: false
+---
+
+# Electron Main Process
+
+- Keep `src/main` focused on privileged desktop logic: window lifecycle, tray, IPC handlers, persistence, SIP/RTP, sockets, and integrations.
+- Do not add renderer UI concerns here. Return plain data and emit events instead.
+- When adding a new capability, wire it through the existing `ipc.ts` entrypoints and keep business logic in dedicated modules like `sip/`, `rtp/`, `store.ts`, `ringtone.ts`, or `socketServer.ts`.
+- Reuse shared contracts from `src/shared/types.ts` instead of inventing duplicate request/response types locally.
+- Preserve the existing settings flow: packaged defaults come from build config, runtime persistence goes through the main store, and developer-only integration overrides remain explicit.
+- Handle failures explicitly and return structured `{ success, error? }`-style responses for renderer-facing actions.

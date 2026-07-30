@@ -158,7 +158,8 @@ export function BottomStatusBar() {
 
       {errorOpen && detailError && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-[60] flex items-center justify-center backdrop-blur-sm p-4"
+          style={{ backgroundColor: 'var(--overlay-backdrop)' }}
           onClick={() => setErrorOpen(false)}
           role="dialog"
           aria-modal="true"

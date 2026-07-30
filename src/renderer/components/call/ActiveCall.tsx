@@ -107,7 +107,11 @@ function ActiveCallPanel({ call }: { call: CallInfo }) {
   const onHold = call.isOnHold || call.state === 'holding'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md animate-fade-in p-3" dir={isRtl ? 'rtl' : 'ltr'}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md animate-fade-in p-3"
+      style={{ backgroundColor: 'var(--overlay-backdrop-strong)' }}
+      dir={isRtl ? 'rtl' : 'ltr'}
+    >
       <div className="w-[380px] max-w-[92vw] bg-bg-surface emergency-panel rounded-3xl p-6 shadow-2xl animate-scale-in">
         <div className="text-center mb-1">
           <p className="text-[11px] text-accent font-semibold mb-2">{t('call.activeTitle')}</p>
@@ -229,7 +233,7 @@ function ActiveCallPanel({ call }: { call: CallInfo }) {
 
         <button
           onClick={handleHangup}
-          className="w-full h-14 rounded-2xl bg-error hover:bg-red-700 text-white font-semibold text-base transition-all duration-200 glow-error active:scale-95 flex items-center justify-center gap-2"
+          className="w-full h-14 rounded-2xl bg-danger hover:bg-danger-hover text-text-inverse font-semibold text-base transition-all duration-200 glow-error active:scale-95 flex items-center justify-center gap-2"
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
             <path d="M10.68 13.31a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 24 20.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07"/>

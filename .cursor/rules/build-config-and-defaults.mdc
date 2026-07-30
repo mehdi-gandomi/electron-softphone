@@ -1,0 +1,13 @@
+---
+description: Build config and packaged-default rules for build.json and related helpers
+globs: "{config/build.json,src/shared/buildConfig.ts,src/main/store.ts}"
+alwaysApply: false
+---
+
+# Build Config And Defaults
+
+- Treat `config/build.json` as packaged default configuration, not ad hoc runtime state.
+- Access build defaults through `src/shared/buildConfig.ts` instead of reading the JSON directly from unrelated modules.
+- Preserve the existing override model in `src/main/store.ts`: build defaults are reapplied unless developer-only overrides are explicitly unlocked and saved.
+- Keep config changes schema-like and backward-compatible where possible, since these values seed packaged installs.
+- When adding a new config field, update the JSON defaults, the shared helper, and the consuming main/renderer code together.

@@ -320,8 +320,11 @@ function AccountForm({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="w-[420px] max-h-[80vh] bg-bg-surface border border-border rounded-3xl p-6 shadow-2xl animate-scale-in overflow-y-auto">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm animate-fade-in"
+      style={{ backgroundColor: 'var(--overlay-backdrop)' }}
+    >
+      <div className="w-[420px] max-h-[80vh] bg-bg-surface border border-border rounded-3xl p-6 shadow-elevated animate-scale-in overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold text-text">
             {account.id ? t('settings.account.editTitle') : t('settings.account.newTitle')}
@@ -1008,7 +1011,7 @@ function ApiTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: (key:
                 <button
                   type="button"
                   onClick={() => removeParam(i)}
-                  className="text-xs text-text-muted hover:text-red-400 px-1"
+                  className="text-xs text-text-muted hover:text-danger px-1"
                   title={t('settings.api.remove')}
                 >
                   ×

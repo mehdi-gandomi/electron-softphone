@@ -4,107 +4,144 @@
 
 @layer base {
   /* ---------------------------------------------------------------
-     Helal Ahmar (Red Crescent) — dark emergency console is default
-     RGB triplets so Tailwind opacity modifiers keep working
+     Shared semantic palette
+     Dark remains the default operational mode; light uses the
+     exact provided palette and dark derives from the same colors.
      --------------------------------------------------------------- */
   :root {
-    /* Deep charcoal / navy console */
-    --c-bg: 18 23 33;
-    --c-bg-surface: 28 34 48;
-    --c-bg-surface-2: 38 46 64;
-    --c-bg-surface-3: 48 58 78;
+    --c-bg: 33 33 33;
+    --c-bg-surface: 66 66 66;
+    --c-bg-surface-2: 97 97 97;
+    --c-bg-surface-3: 117 117 117;
 
-    --c-text: 245 247 250;
-    --c-text-secondary: 168 178 196;
-    --c-text-muted: 110 122 145;
+    --c-primary: 230 57 70;
+    --c-primary-hover: 255 107 122;
+    --c-primary-active: 193 18 31;
+    --c-secondary: 69 123 157;
+    --c-secondary-hover: 168 218 220;
+    --c-accent: 6 214 160;
+    --c-accent-hover: 127 255 212;
 
-    /* Crescent red — primary brand / emergency */
-    --c-accent: 220 38 38;
-    --c-accent-hover: 185 28 28;
-    --c-accent-glow: rgba(220, 38, 38, 0.35);
-    --c-accent-dim: rgba(220, 38, 38, 0.12);
+    --c-success: 16 185 129;
+    --c-success-hover: 110 231 183;
+    --c-warning: 245 158 11;
+    --c-warning-hover: 251 191 36;
+    --c-danger: 239 68 68;
+    --c-danger-hover: 252 165 165;
+    --c-error: 239 68 68;
+    --c-info: 69 123 157;
 
-    /* Logo ring green — ready / connected */
-    --c-success: 34 139 74;
-    --c-success-glow: rgba(34, 139, 74, 0.3);
-    --c-error: 220 38 38;
-    --c-error-glow: rgba(220, 38, 38, 0.3);
-    --c-warning: 217 119 6;
-    --c-warning-glow: rgba(217, 119, 6, 0.25);
+    --c-text: 255 255 255;
+    --c-text-secondary: 245 245 245;
+    --c-text-muted: 224 224 224;
+    --c-text-tertiary: 189 189 189;
+    --c-text-inverse: 255 255 255;
 
-    --c-helal-green: 22 101 52;
-    --c-info: 14 165 180;
+    --c-border: 224 224 224;
+    --c-border-hover: 245 245 245;
+    --c-border-strong: 255 229 232;
+    --c-emergency-ring: rgba(230, 57, 70, 0.4);
 
-    --c-border: rgba(255, 255, 255, 0.08);
-    --c-border-hover: rgba(255, 255, 255, 0.14);
-    --c-emergency-ring: rgba(220, 38, 38, 0.55);
+    --c-primary-glow: rgba(230, 57, 70, 0.24);
+    --c-primary-dim: rgba(230, 57, 70, 0.14);
+    --c-accent-glow: rgba(6, 214, 160, 0.22);
+    --c-success-glow: rgba(16, 185, 129, 0.24);
+    --c-error-glow: rgba(239, 68, 68, 0.24);
+    --c-warning-glow: rgba(245, 158, 11, 0.24);
 
-    --overlay-1: rgba(255, 255, 255, 0.05);
-    --overlay-2: rgba(255, 255, 255, 0.1);
+    --shadow-sm: 0 6px 18px rgba(0, 0, 0, 0.18);
+    --shadow-md: 0 14px 30px rgba(0, 0, 0, 0.24);
+    --shadow-lg: 0 24px 40px rgba(0, 0, 0, 0.3);
+    --shadow-colored: 0 20px 38px rgba(230, 57, 70, 0.18);
 
-    --glass-bg: rgba(255, 255, 255, 0.04);
-    --glass-border: rgba(255, 255, 255, 0.08);
-    --glass-bg-hover: rgba(255, 255, 255, 0.07);
-    --glass-border-hover: rgba(255, 255, 255, 0.14);
+    --overlay-1: rgba(255, 255, 255, 0.08);
+    --overlay-2: rgba(255, 255, 255, 0.14);
+    --overlay-backdrop: rgba(0, 0, 0, 0.6);
+    --overlay-backdrop-strong: rgba(0, 0, 0, 0.72);
 
-    --scrollbar-thumb: rgba(255, 255, 255, 0.12);
-    --scrollbar-thumb-hover: rgba(255, 255, 255, 0.22);
+    --glass-bg: rgba(255, 255, 255, 0.08);
+    --glass-border: rgba(255, 255, 255, 0.16);
+    --glass-bg-hover: rgba(255, 255, 255, 0.12);
+    --glass-border-hover: rgba(255, 255, 255, 0.2);
 
-    --frame-outer-bg: radial-gradient(120% 100% at 50% 0%, #1a2230 0%, #0c1018 100%);
-    --frame-bezel: linear-gradient(165deg, #2a3344 0%, #141a24 100%);
-    --frame-edge: rgba(220, 38, 38, 0.2);
+    --scrollbar-thumb: rgba(255, 255, 255, 0.18);
+    --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
 
-    --dial-key-bg: 38 46 64;
-    --dial-key-hover: 48 58 78;
+    --frame-outer-bg: radial-gradient(120% 100% at 50% 0%, #616161 0%, #212121 100%);
+    --frame-bezel: linear-gradient(165deg, #757575 0%, #424242 100%);
+    --frame-edge: rgba(230, 57, 70, 0.24);
+    --frame-speaker: rgba(0, 0, 0, 0.35);
+
+    --dial-key-bg: 66 66 66;
+    --dial-key-hover: 97 97 97;
   }
 
-  /* Helal light — warm rescue day mode */
   .light {
-    --c-bg: 249 247 245;
-    --c-bg-surface: 255 255 255;
-    --c-bg-surface-2: 243 240 236;
-    --c-bg-surface-3: 232 226 220;
+    --c-bg: 255 255 255;
+    --c-bg-surface: 250 250 250;
+    --c-bg-surface-2: 245 245 245;
+    --c-bg-surface-3: 241 248 249;
 
-    --c-text: 35 28 28;
-    --c-text-secondary: 90 78 78;
-    --c-text-muted: 148 136 136;
+    --c-primary: 230 57 70;
+    --c-primary-hover: 255 107 122;
+    --c-primary-active: 193 18 31;
+    --c-secondary: 69 123 157;
+    --c-secondary-hover: 168 218 220;
+    --c-accent: 6 214 160;
+    --c-accent-hover: 127 255 212;
 
-    --c-accent: 185 28 28;
-    --c-accent-hover: 153 27 27;
-    --c-accent-glow: rgba(185, 28, 28, 0.22);
-    --c-accent-dim: rgba(185, 28, 28, 0.08);
+    --c-success: 16 185 129;
+    --c-success-hover: 110 231 183;
+    --c-warning: 245 158 11;
+    --c-warning-hover: 251 191 36;
+    --c-danger: 239 68 68;
+    --c-danger-hover: 252 165 165;
+    --c-error: 239 68 68;
+    --c-info: 69 123 157;
 
-    --c-success: 22 120 60;
-    --c-success-glow: rgba(22, 120, 60, 0.2);
-    --c-error: 185 28 28;
-    --c-error-glow: rgba(185, 28, 28, 0.2);
-    --c-warning: 180 100 0;
-    --c-warning-glow: rgba(180, 100, 0, 0.2);
+    --c-text: 26 26 26;
+    --c-text-secondary: 102 102 102;
+    --c-text-muted: 153 153 153;
+    --c-text-tertiary: 170 170 170;
+    --c-text-inverse: 255 255 255;
 
-    --c-helal-green: 22 101 52;
-    --c-info: 14 140 150;
+    --c-border: 232 232 232;
+    --c-border-hover: 212 212 212;
+    --c-border-strong: 255 229 232;
+    --c-emergency-ring: rgba(230, 57, 70, 0.32);
 
-    --c-border: rgba(35, 28, 28, 0.08);
-    --c-border-hover: rgba(35, 28, 28, 0.16);
-    --c-emergency-ring: rgba(185, 28, 28, 0.45);
+    --c-primary-glow: rgba(230, 57, 70, 0.14);
+    --c-primary-dim: rgba(230, 57, 70, 0.08);
+    --c-accent-glow: rgba(6, 214, 160, 0.14);
+    --c-success-glow: rgba(16, 185, 129, 0.16);
+    --c-error-glow: rgba(239, 68, 68, 0.14);
+    --c-warning-glow: rgba(245, 158, 11, 0.16);
 
-    --overlay-1: rgba(35, 28, 28, 0.04);
-    --overlay-2: rgba(35, 28, 28, 0.08);
+    --shadow-sm: 0 8px 18px rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 16px 30px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 26px 42px rgba(0, 0, 0, 0.15);
+    --shadow-colored: 0 18px 34px rgba(230, 57, 70, 0.1);
 
-    --glass-bg: rgba(255, 255, 255, 0.72);
-    --glass-border: rgba(35, 28, 28, 0.08);
-    --glass-bg-hover: rgba(255, 255, 255, 0.9);
-    --glass-border-hover: rgba(35, 28, 28, 0.14);
+    --overlay-1: rgba(0, 0, 0, 0.04);
+    --overlay-2: rgba(0, 0, 0, 0.08);
+    --overlay-backdrop: rgba(0, 0, 0, 0.4);
+    --overlay-backdrop-strong: rgba(0, 0, 0, 0.6);
+
+    --glass-bg: rgba(255, 255, 255, 0.9);
+    --glass-border: rgba(232, 232, 232, 0.95);
+    --glass-bg-hover: rgba(255, 255, 255, 0.7);
+    --glass-border-hover: rgba(212, 212, 212, 0.95);
 
     --scrollbar-thumb: rgba(0, 0, 0, 0.12);
     --scrollbar-thumb-hover: rgba(0, 0, 0, 0.22);
 
-    --frame-outer-bg: radial-gradient(120% 100% at 50% 0%, #f3ebe8 0%, #d9cfc9 100%);
-    --frame-bezel: linear-gradient(165deg, #ffffff 0%, #e8dfda 100%);
-    --frame-edge: rgba(185, 28, 28, 0.18);
+    --frame-outer-bg: radial-gradient(120% 100% at 50% 0%, #fff9f9 0%, #f5f5f5 100%);
+    --frame-bezel: linear-gradient(165deg, #ffffff 0%, #f5f5f5 100%);
+    --frame-edge: rgba(230, 57, 70, 0.16);
+    --frame-speaker: rgba(0, 0, 0, 0.2);
 
     --dial-key-bg: 255 255 255;
-    --dial-key-hover: 249 247 245;
+    --dial-key-hover: 250 250 250;
   }
 
   * {
@@ -177,7 +214,7 @@
 
   .emergency-panel {
     border: 1.5px solid var(--c-emergency-ring);
-    box-shadow: 0 0 0 1px var(--c-accent-dim), 0 0 28px var(--c-accent-glow);
+    box-shadow: 0 0 0 1px var(--c-primary-dim), 0 0 28px var(--c-primary-glow);
   }
 
   .status-pill {
@@ -189,7 +226,12 @@
   }
 
   .btn-primary {
-    @apply bg-accent hover:bg-accent-hover text-white font-medium rounded-xl px-4 py-2.5 transition-all duration-200;
+    @apply bg-primary hover:bg-primary-hover text-text-inverse font-medium rounded-xl px-4 py-2.5 transition-all duration-200;
+    box-shadow: var(--shadow-colored);
+  }
+
+  .btn-secondary {
+    @apply bg-secondary hover:bg-secondary-hover text-text-inverse font-medium rounded-xl px-4 py-2.5 transition-all duration-200;
   }
 
   .btn-ghost {
@@ -200,11 +242,11 @@
   }
 
   .btn-danger {
-    @apply bg-error hover:bg-red-700 text-white font-medium rounded-xl px-4 py-2.5 transition-all duration-200;
+    @apply bg-danger hover:bg-danger-hover text-text-inverse font-medium rounded-xl px-4 py-2.5 transition-all duration-200;
   }
 
   .btn-success {
-    @apply bg-success hover:bg-emerald-700 text-white font-medium rounded-xl px-4 py-2.5 transition-all duration-200;
+    @apply bg-success hover:bg-success-hover text-text-inverse font-medium rounded-xl px-4 py-2.5 transition-all duration-200;
   }
 
   .input-field {
@@ -254,8 +296,8 @@
     height: 13px;
     border-radius: 9999px;
     background: rgb(var(--c-bg-surface));
-    border: 2px solid rgb(var(--c-accent));
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    border: 2px solid rgb(var(--c-primary));
+    box-shadow: var(--shadow-sm);
     transition: transform 0.15s ease;
   }
   .ui-slider::-webkit-slider-thumb:hover {

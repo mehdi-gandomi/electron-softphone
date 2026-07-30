@@ -1,0 +1,13 @@
+---
+description: Theme, Tailwind, and styling rules for the renderer
+globs: "{src/renderer/styles/**/*.css,src/renderer/lib/theme.tsx,tailwind.config.js}"
+alwaysApply: false
+---
+
+# Renderer Theme And Styling
+
+- Prefer semantic theme tokens over raw colors. Add or adjust tokens in `src/renderer/styles/globals.css` and expose them through `tailwind.config.js` before using new visual values in components.
+- Use the existing theme system (`dark` / `light`, CSS variables, semantic Tailwind aliases like `bg-bg`, `text-text`, `border-border`) instead of hardcoded hex values.
+- Keep `src/renderer/lib/theme.tsx` responsible for theme selection and persistence, not component-level styling decisions.
+- Reuse helper classes like `btn-*`, `glass`, `card`, `hover-overlay`, and semantic status colors where possible before inventing one-off styles.
+- When adding UI states, check both themes for readable contrast and consistent behavior.

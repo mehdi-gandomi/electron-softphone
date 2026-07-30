@@ -1,0 +1,14 @@
+---
+description: Preload rules for the typed window.api bridge
+globs: src/preload/**/*.ts
+alwaysApply: false
+---
+
+# Preload Bridge
+
+- Treat preload as the only bridge between renderer code and Electron/Node privileges.
+- Expose capabilities through `window.api` with `contextBridge`; do not leak raw Electron modules into the renderer.
+- Keep the `ElectronAPI` interface in sync with the methods exposed below it.
+- Prefer typed arguments and return values that match shared contracts from `src/shared/types.ts` when data crosses processes.
+- Use `ipcRenderer.invoke` for request/response actions and well-scoped listeners for event streams.
+- If you add or rename a bridge method here, update the corresponding IPC handler in `src/main/ipc.ts` and all renderer call sites together.

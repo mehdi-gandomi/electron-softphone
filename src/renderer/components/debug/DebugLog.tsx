@@ -228,7 +228,7 @@ export function DebugLog() {
               <div
                 key={i}
                 onClick={() => setSelectedLog(selectedLog === log ? null : log)}
-                className={`flex gap-2 px-2 py-0.5 rounded cursor-pointer hover:bg-white/5 transition-colors ${
+                className={`flex gap-2 px-2 py-0.5 rounded cursor-pointer hover-overlay transition-colors ${
                   selectedLog === log ? 'bg-accent/10' : ''
                 } ${log.direction === 'error' ? 'bg-error/5' : ''}`}
               >

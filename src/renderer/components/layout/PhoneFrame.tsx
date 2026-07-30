@@ -16,7 +16,7 @@ export function PhoneFrame({ children }: { children: ReactNode }) {
       >
         {/* Earpiece / speaker grill */}
         <div className="absolute top-1 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 pointer-events-none">
-          <div className="w-14 h-[4px] rounded-full bg-black/35 shadow-inner" />
+          <div className="w-14 h-[4px] rounded-full shadow-inner" style={{ backgroundColor: 'var(--frame-speaker)' }} />
         </div>
 
         {/* Screen */}

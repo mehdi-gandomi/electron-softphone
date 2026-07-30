@@ -60,7 +60,7 @@ export function PhoneTabs({
           <button
             type="button"
             onClick={onOpenProfile}
-            className="status-pill !py-0.5 !px-2.5 border-border text-amber-300 bg-bg-surface-2 text-[11px] hover:text-amber-200 transition-colors"
+            className="status-pill !py-0.5 !px-2.5 border-border text-warning bg-bg-surface-2 text-[11px] hover:text-warning-hover transition-colors"
             title={t('auth.setupIncomplete')}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="me-1">
@@ -84,7 +84,7 @@ export function PhoneTabs({
         <TabsTrigger value="recent" className="!py-1.5 !text-xs">
           {t('phone.recent')}
           {missedCount > 0 && (
-            <span className="min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-error text-white text-[9px] font-bold leading-none">
+            <span className="min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-danger text-text-inverse text-[9px] font-bold leading-none">
               {missedCount}
             </span>
           )}

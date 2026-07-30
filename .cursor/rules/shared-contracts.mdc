@@ -1,0 +1,13 @@
+---
+description: Shared type and config contract rules for cross-process data
+globs: src/shared/**/*.ts
+alwaysApply: false
+---
+
+# Shared Contracts
+
+- `src/shared` is the source of truth for models used by more than one process or subsystem.
+- Add or update IPC payloads, settings shapes, user/session models, and build-config helpers here before duplicating types elsewhere.
+- Keep these modules environment-neutral: no DOM APIs, React imports, Electron imports, or renderer-only helpers.
+- Prefer stable, descriptive interfaces and union types so both main and renderer can rely on the same contract.
+- When changing a shared type, update all affected main, preload, and renderer call sites in the same change.

@@ -153,7 +153,7 @@ export function DialPad() {
         aria-label={t('dialpad.call')}
         className={`w-14 h-14 mt-0.5 rounded-full flex items-center justify-center transition-all duration-200 ${
           canCall
-            ? 'bg-success hover:bg-emerald-700 text-white glow-success active:scale-95'
+            ? 'bg-success hover:bg-success-hover text-text-inverse glow-success active:scale-95'
             : 'bg-bg-surface-2 text-text-muted cursor-not-allowed border border-border'
         }`}
       >

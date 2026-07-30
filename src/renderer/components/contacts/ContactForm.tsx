@@ -30,8 +30,11 @@ export function ContactForm({ contact, onSave, onClose }: ContactFormProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="w-[380px] bg-bg-surface border border-border rounded-3xl p-6 shadow-2xl animate-scale-in">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm animate-fade-in"
+      style={{ backgroundColor: 'var(--overlay-backdrop)' }}
+    >
+      <div className="w-[380px] bg-bg-surface border border-border rounded-3xl p-6 shadow-elevated animate-scale-in">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold text-text">
             {contact ? t('contactForm.edit') : t('contactForm.new')}

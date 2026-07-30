@@ -1,0 +1,15 @@
+---
+description: Renderer conventions for React components, Zustand stores, and app structure
+globs: src/renderer/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Renderer Components And Stores
+
+- Keep the renderer process limited to React UI, local state, presentation logic, notifications, i18n, and calls to `window.api`.
+- Do not import from `src/main` or use Electron/Node APIs directly in renderer files.
+- Organize UI by feature folder (`auth`, `call`, `contacts`, `history`, `settings`, `profile`, `layout`, `ui`) and keep generic primitives in `components/ui`.
+- Keep Zustand stores small and domain-focused in `src/renderer/stores`; avoid large mixed-purpose stores.
+- Route user-facing strings through `src/renderer/lib/i18n.tsx` and respect existing RTL/LTR behavior.
+- Reuse shared types from `src/shared/types.ts` whenever data is persisted, synced, or sent over IPC.
+- Keep entry files like `src/renderer/App.tsx` and `src/renderer/main.tsx` focused on providers, shell setup, and top-level flow wiring.

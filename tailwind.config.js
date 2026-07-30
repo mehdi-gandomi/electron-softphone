@@ -15,31 +15,47 @@ module.exports = {
           DEFAULT: 'rgb(var(--c-text) / <alpha-value>)',
           secondary: 'rgb(var(--c-text-secondary) / <alpha-value>)',
           muted: 'rgb(var(--c-text-muted) / <alpha-value>)',
+          tertiary: 'rgb(var(--c-text-tertiary) / <alpha-value>)',
+          inverse: 'rgb(var(--c-text-inverse) / <alpha-value>)',
+        },
+        primary: {
+          DEFAULT: 'rgb(var(--c-primary) / <alpha-value>)',
+          hover: 'rgb(var(--c-primary-hover) / <alpha-value>)',
+        },
+        secondary: {
+          DEFAULT: 'rgb(var(--c-secondary) / <alpha-value>)',
+          hover: 'rgb(var(--c-secondary-hover) / <alpha-value>)',
         },
         accent: {
           DEFAULT: 'rgb(var(--c-accent) / <alpha-value>)',
           hover: 'rgb(var(--c-accent-hover) / <alpha-value>)',
           glow: 'var(--c-accent-glow)',
-          dim: 'var(--c-accent-dim)',
         },
         success: {
           DEFAULT: 'rgb(var(--c-success) / <alpha-value>)',
+          hover: 'rgb(var(--c-success-hover) / <alpha-value>)',
           glow: 'var(--c-success-glow)',
         },
         error: {
           DEFAULT: 'rgb(var(--c-error) / <alpha-value>)',
           glow: 'var(--c-error-glow)',
         },
+        danger: {
+          DEFAULT: 'rgb(var(--c-danger) / <alpha-value>)',
+          hover: 'rgb(var(--c-danger-hover) / <alpha-value>)',
+        },
         warning: {
           DEFAULT: 'rgb(var(--c-warning) / <alpha-value>)',
+          hover: 'rgb(var(--c-warning-hover) / <alpha-value>)',
           glow: 'var(--c-warning-glow)',
         },
         info: {
           DEFAULT: 'rgb(var(--c-info) / <alpha-value>)',
         },
         border: {
-          DEFAULT: 'var(--c-border)',
-          hover: 'var(--c-border-hover)',
+          DEFAULT: 'rgb(var(--c-border) / <alpha-value>)',
+          hover: 'rgb(var(--c-border-hover) / <alpha-value>)',
+          strong: 'rgb(var(--c-border-strong) / <alpha-value>)',
         },
       },
       fontFamily: {
@@ -56,7 +72,10 @@ module.exports = {
         'glow-accent': '0 0 20px var(--c-accent-glow)',
         'glow-success': '0 0 20px var(--c-success-glow)',
         'glow-error': '0 0 20px var(--c-error-glow)',
-        'glass': '0 8px 32px rgba(0, 0, 0, 0.4)',
+        'glass': 'var(--shadow-md)',
+        'soft': 'var(--shadow-sm)',
+        'elevated': 'var(--shadow-lg)',
+        'colored': 'var(--shadow-colored)',
         // "Real phone" device frame shadows
         'phone': '0 30px 60px -15px rgba(0, 0, 0, 0.55), 0 10px 24px -8px rgba(0, 0, 0, 0.35)',
         'phone-screen': 'inset 0 2px 10px rgba(0, 0, 0, 0.35)',
