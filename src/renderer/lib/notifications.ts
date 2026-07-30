@@ -6,6 +6,8 @@
  * // TODO: When wrapped in Electron/Tauri, replace this with ipcRenderer.send('focus-window')
  */
 
+import logoUrl from '../assets/logo.png'
+
 /** Call once on app load to request permission. */
 export async function initNotifications(): Promise<void> {
   if (!('Notification' in window)) return
@@ -39,6 +41,7 @@ export function notifyIncomingCall(call: IncomingCallInfo): Notification | null 
     current?.close()
     const n = new Notification(title, {
       body,
+      icon: logoUrl,
       tag: 'incoming-call',
       requireInteraction: true,
       dir: 'rtl',

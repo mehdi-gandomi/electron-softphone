@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSipStore } from '../../stores/sipStore'
+import { useI18n } from '../../lib/i18n'
 
 interface LogEntry {
   timestamp: number
@@ -35,6 +36,7 @@ function logsToText(logs: LogEntry[]) {
 }
 
 export function DebugLog() {
+  const { t } = useI18n()
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [autoRefresh, setAutoRefresh] = useState(true)
   const [filter, setFilter] = useState<'all' | 'sent' | 'recv' | 'error' | 'info'>('all')
@@ -84,7 +86,7 @@ export function DebugLog() {
   const handleReconnect = async () => {
     const result = await window.api.sip.reconnect()
     if (!result.success) {
-      useSipStore.getState().setStatus('failed', 0, result.error || 'Reconnect failed')
+      useSipStore.getState().setStatus('failed', 0, result.error || t('debug.reconnectFailed'))
     }
     fetchLogs()
   }
@@ -103,7 +105,7 @@ export function DebugLog() {
       setCopyDone(true)
       setTimeout(() => setCopyDone(false), 1500)
     } catch {
-      setSaveMsg('Copy failed')
+      setSaveMsg(t('debug.copyFailed'))
       setTimeout(() => setSaveMsg(''), 2000)
     }
   }
@@ -112,7 +114,7 @@ export function DebugLog() {
     const text = logsToText(filter === 'all' ? logs : filtered)
     const result = await window.api.debug.saveLog(text)
     if (result.success && result.path) {
-      setSaveMsg(`Saved: ${result.path}`)
+      setSaveMsg(t('debug.saved', { path: result.path }))
     } else if (result.error && result.error !== 'Cancelled') {
       setSaveMsg(result.error)
     }
@@ -123,33 +125,41 @@ export function DebugLog() {
     await window.api.debug.openLogsFolder()
   }
 
+  const filterLabels: Record<typeof filter, string> = {
+    all: t('debug.filter.all'),
+    sent: t('debug.filter.sent'),
+    recv: t('debug.filter.recv'),
+    error: t('debug.filter.error'),
+    info: t('debug.filter.info'),
+  }
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h1 className="text-lg font-semibold text-text">Debug Log</h1>
+          <h1 className="text-lg font-semibold text-text">{t('debug.title')}</h1>
           <p className="text-[11px] text-text-muted mt-0.5">
-            SIP messages and errors for registration and calls
+            {t('debug.subtitle')}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
           <button onClick={handleReconnect} className="btn-primary text-xs py-1 px-3">
-            Reconnect
+            {t('debug.reconnect')}
           </button>
           <button onClick={handleCopy} className="btn-ghost text-xs py-1 px-3">
-            {copyDone ? 'Copied' : 'Copy'}
+            {copyDone ? t('debug.copied') : t('debug.copy')}
           </button>
           <button onClick={handleSave} className="btn-ghost text-xs py-1 px-3">
-            Save…
+            {t('debug.save')}
           </button>
           <button onClick={handleOpenFolder} className="btn-ghost text-xs py-1 px-3">
-            Open folder
+            {t('debug.openFolder')}
           </button>
           <button onClick={handleClear} className="btn-ghost text-xs py-1 px-3">
-            Clear
+            {t('debug.clear')}
           </button>
           <button onClick={fetchLogs} className="btn-ghost text-xs py-1 px-3">
-            Refresh
+            {t('debug.refresh')}
           </button>
         </div>
       </div>
@@ -159,7 +169,7 @@ export function DebugLog() {
           {saveMsg && <div className="text-success mb-1">{saveMsg}</div>}
           {logFilePath && (
             <div>
-              Auto-log (when Debug Logging enabled): <span className="text-text-secondary">{logFilePath}</span>
+              {t('debug.autoLog')} <span className="text-text-secondary">{logFilePath}</span>
             </div>
           )}
         </div>
@@ -171,10 +181,10 @@ export function DebugLog() {
         sipStatus === 'failed' ? 'bg-error/10 border-error/30 text-error' :
         'bg-bg-surface border-border text-text-secondary'
       }`}>
-        <span className="font-medium">Registration: {sipStatus}</span>
-        {sipError && <span className="ml-2 opacity-90">— {sipError}</span>}
+        <span className="font-medium">{t('debug.registration', { status: sipStatus })}</span>
+        {sipError && <span className="ms-2 opacity-90">— {sipError}</span>}
         {errorCount > 0 && (
-          <span className="ml-2 text-error font-medium">{errorCount} error{errorCount !== 1 ? 's' : ''} in log</span>
+          <span className="ms-2 text-error font-medium">{t('debug.errorsInLog', { count: errorCount })}</span>
         )}
       </div>
 
@@ -188,7 +198,7 @@ export function DebugLog() {
                 filter === f ? 'bg-accent/15 text-accent' : 'text-text-muted hover:text-text'
               }`}
             >
-              {f.charAt(0).toUpperCase() + f.slice(1)}
+              {filterLabels[f]}
               {f === 'error' && errorCount > 0 ? ` (${errorCount})` : ''}
             </button>
           ))}
@@ -200,17 +210,17 @@ export function DebugLog() {
             onChange={(e) => setAutoRefresh(e.target.checked)}
             className="accent-accent"
           />
-          Auto-refresh
+          {t('debug.autoRefresh')}
         </label>
-        <span className="text-[10px] text-text-muted ml-auto">{logs.length} entries</span>
+        <span className="text-[10px] text-text-muted ms-auto">{t('debug.entries', { count: logs.length })}</span>
       </div>
 
       <div className="flex-1 overflow-y-auto bg-bg rounded-xl border border-border p-2 font-mono text-[11px] leading-5 min-h-[200px]">
         {filtered.length === 0 ? (
           <div className="text-text-muted text-center py-8">
             {logs.length === 0
-              ? 'No SIP activity yet. Save an account and click Reconnect — errors will appear here.'
-              : 'No entries match filter'}
+              ? t('debug.empty')
+              : t('debug.noMatch')}
           </div>
         ) : (
           <>
@@ -240,7 +250,7 @@ export function DebugLog() {
             onClick={() => setShowRaw(!showRaw)}
             className="text-xs text-accent hover:text-accent-hover mb-2"
           >
-            {showRaw ? 'Hide Raw' : 'Show Raw SIP Message'}
+            {showRaw ? t('debug.hideRaw') : t('debug.showRaw')}
           </button>
           {showRaw && (
             <pre className="bg-bg p-3 rounded-xl border border-border overflow-x-auto text-[10px] text-text-secondary leading-4 max-h-48 overflow-y-auto whitespace-pre-wrap break-all">

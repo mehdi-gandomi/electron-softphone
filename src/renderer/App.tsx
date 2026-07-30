@@ -3,6 +3,7 @@ import { AppShell } from './components/layout/AppShell'
 import { PhoneFrame } from './components/layout/PhoneFrame'
 import { PhoneTabs } from './components/phone/PhoneTabs'
 import { ThemeProvider } from './lib/theme'
+import { I18nProvider, useI18n } from './lib/i18n'
 import { initNotifications, notifyIncomingCall, closeIncomingCallNotification } from './lib/notifications'
 import { ContactList } from './components/contacts/ContactList'
 import { CallHistory } from './components/history/CallHistory'
@@ -62,9 +63,10 @@ function recordCallHistory(payload: CallEndedPayload, existing?: CallInfo | null
   useHistoryStore.getState().addRecord(record)
 }
 
-export default function App() {
+function AppContent() {
   const [page, setPage] = useState<Page>('dialpad')
   const { setIncomingCall, setCallState, addCall, removeCall, updateCall } = useCallStore()
+  const { t, isRtl } = useI18n()
 
   useEffect(() => {
     const api = window.api
@@ -148,7 +150,7 @@ export default function App() {
         useSipStore.getState().setStatus(
           'disconnected',
           0,
-          result.error || 'Not connected. Add a SIP account in Settings.'
+          result.error || t('app.notConnected')
         )
       }
     })
@@ -160,25 +162,33 @@ export default function App() {
       api.off('sip:call-state', onCallState)
       api.off('sip:call-ended', onCallEnded)
     }
-  }, [])
+  }, [t, setIncomingCall, setCallState, addCall, removeCall, updateCall])
 
   return (
-    <ThemeProvider>
-      <div className="h-screen overflow-hidden" dir="rtl">
-        <PhoneFrame>
-          <AppShell page={page} onNavigate={(p) => setPage(p as Page)}>
-            {page === 'dialpad' && <PhoneTabs />}
-            {page === 'contacts' && <ContactList />}
-            {page === 'history' && <CallHistory />}
-            {page === 'settings' && <Settings />}
-            {page === 'autofill' && <AutoFillForm />}
-          </AppShell>
-        </PhoneFrame>
+    <div className="h-screen overflow-hidden" dir={isRtl ? 'rtl' : 'ltr'}>
+      <PhoneFrame>
+        <AppShell page={page} onNavigate={(p) => setPage(p as Page)}>
+          {page === 'dialpad' && <PhoneTabs />}
+          {page === 'contacts' && <ContactList />}
+          {page === 'history' && <CallHistory />}
+          {page === 'settings' && <Settings />}
+          {page === 'autofill' && <AutoFillForm />}
+        </AppShell>
+      </PhoneFrame>
 
-        <ActiveCall />
-        <IncomingCall />
-        <CallAudio />
-      </div>
+      <ActiveCall />
+      <IncomingCall />
+      <CallAudio />
+    </div>
+  )
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <I18nProvider>
+        <AppContent />
+      </I18nProvider>
     </ThemeProvider>
   )
 }

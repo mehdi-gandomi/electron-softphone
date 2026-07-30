@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useContactStore } from '../../stores/contactStore'
 import { ContactForm } from './ContactForm'
+import { useI18n } from '../../lib/i18n'
 import type { Contact } from '../../../shared/types'
 import { randomId } from '../../lib/utils'
 
 export function ContactList() {
+  const { t } = useI18n()
   const { contacts, searchQuery, setSearchQuery, getFilteredContacts, addContact, removeContact, setContacts } = useContactStore()
   const [showForm, setShowForm] = useState(false)
   const [editingContact, setEditingContact] = useState<Contact | null>(null)
@@ -50,18 +52,18 @@ export function ContactList() {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-lg font-semibold text-text">Contacts</h1>
+        <h1 className="text-lg font-semibold text-text">{t('contacts.title')}</h1>
         <button
           onClick={() => { setEditingContact(null); setShowForm(true) }}
           className="btn-primary text-sm py-1.5 px-3"
         >
-          + Add
+          {t('contacts.add')}
         </button>
       </div>
 
       {/* Search */}
       <div className="relative mb-4">
-        <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg className="absolute start-3 top-1/2 -translate-y-1/2 text-text-muted" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <circle cx="11" cy="11" r="8"/>
           <path d="M21 21l-4.35-4.35"/>
         </svg>
@@ -69,8 +71,8 @@ export function ContactList() {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search contacts..."
-          className="input-field pl-10 text-sm"
+          placeholder={t('contacts.search')}
+          className="input-field ps-10 text-sm"
         />
       </div>
 
@@ -82,7 +84,7 @@ export function ContactList() {
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
               <circle cx="12" cy="7" r="4"/>
             </svg>
-            <p className="text-sm">{searchQuery ? 'No contacts found' : 'No contacts yet'}</p>
+            <p className="text-sm">{searchQuery ? t('contacts.notFound') : t('contacts.empty')}</p>
           </div>
         ) : (
           filtered.map((contact) => (
@@ -99,6 +101,17 @@ export function ContactList() {
                 <p className="text-xs text-text-secondary font-mono truncate">{contact.number}</p>
               </div>
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); handleCall(contact.number) }}
+                  className="w-8 h-8 rounded-lg hover:bg-success/20 flex items-center justify-center text-text-secondary hover:text-success"
+                  aria-label={t('contacts.call')}
+                  title={t('contacts.call')}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+                  </svg>
+                </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); setEditingContact(contact); setShowForm(true) }}
                   className="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-text-secondary"

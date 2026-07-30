@@ -98,9 +98,13 @@ export interface CallRecord {
 }
 
 // --- Settings ---
+export type Locale = 'fa' | 'en'
+
 export interface AppSettings {
   accounts: SipAccount[]
   activeAccountId: string
+  /** UI language — defaults to Farsi */
+  locale: Locale
   ringtonePath: string
   /** classic | soft | urgent | chime | custom */
   ringtonePreset: string
@@ -120,6 +124,21 @@ export interface AppSettings {
   hotkeys: HotkeyConfig
   apiIntegration: ApiIntegration
   screenPop: ScreenPopSettings
+  socketServer: SocketServerSettings
+  /**
+   * When false, apiIntegration / screenPop / socketServer are re-applied from config/build.json on load.
+   * Set true after a developer unlocks and saves those sections.
+   */
+  developerOverrides: boolean
+}
+
+export interface SocketServerSettings {
+  enabled: boolean
+  /** Bind address — default 127.0.0.1 */
+  host: string
+  port: number
+  /** Optional; empty = no auth. Clients send via handshake.auth.token */
+  authToken: string
 }
 
 export type ScreenPopParamSource =

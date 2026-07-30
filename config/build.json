@@ -1,0 +1,37 @@
+{
+  "_comment": "Edit before npm run package. API / screen pop / socket defaults for normal users. developerKey unlocks Settings → API & Debug.",
+  "developerKey": "Iracode@2026",
+  "apiIntegration": {
+    "enabled": false,
+    "webhookUrl": "",
+    "apiKey": "",
+    "events": {
+      "incomingCall": true,
+      "callAnswered": true,
+      "callEnded": true,
+      "callMissed": true
+    },
+    "autoFillFields": [
+      { "key": "caller_id", "label": "Caller ID", "source": "caller_id" },
+      { "key": "extension", "label": "Extension", "source": "extension" },
+      { "key": "timestamp", "label": "Timestamp", "source": "timestamp" }
+    ]
+  },
+  "screenPop": {
+    "enabled": false,
+    "baseUrl": "",
+    "issabelHeader": "X-UniqueID",
+    "params": [
+      { "name": "phone", "source": "caller_id" },
+      { "name": "extension", "source": "extension" },
+      { "name": "issabel_id", "source": "issabel_id" },
+      { "name": "answered", "source": "answer_datetime" }
+    ]
+  },
+  "socketServer": {
+    "enabled": false,
+    "host": "127.0.0.1",
+    "port": 3920,
+    "authToken": ""
+  }
+}

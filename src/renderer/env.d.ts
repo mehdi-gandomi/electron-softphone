@@ -1,5 +1,10 @@
 import type { SipAccount, RegistrationInfo, CallInfo, CallState } from '../shared/types'
 
+declare module '*.png' {
+  const src: string
+  export default src
+}
+
 // Expose API type
 declare global {
   interface Window {
@@ -13,6 +18,10 @@ declare global {
       settings: {
         get: () => Promise<Record<string, unknown>>
         set: (key: string, value: unknown) => Promise<boolean>
+        unlockDeveloper: (key: string) => Promise<{ success: boolean }>
+        lockDeveloper: () => Promise<boolean>
+        isDeveloperUnlocked: () => Promise<boolean>
+        resetBuildDefaults: () => Promise<Record<string, unknown>>
       }
       accounts: {
         list: () => Promise<SipAccount[]>

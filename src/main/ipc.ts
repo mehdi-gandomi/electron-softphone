@@ -1,7 +1,7 @@
 import { ipcMain, BrowserWindow, shell } from 'electron'
 import { SipEngine } from './sip/engine'
 import { sipLogBuffer } from './sip/transport'
-import { getSettings, setSetting, getActiveAccount, addAccount, updateAccount, removeAccount, setActiveAccount } from './store'
+import { getSettings, setSetting, getActiveAccount, addAccount, updateAccount, removeAccount, setActiveAccount, resetToBuildDefaults, markDeveloperOverrides } from './store'
 import type { SipAccount, CallInfo, ScreenPopParam, ScreenPopParamSource } from '../shared/types'
 import https from 'https'
 import http from 'http'
@@ -16,9 +16,14 @@ import {
   resolveRingtonePath,
   getTodayLogPath,
 } from './ringtone'
+import { syncSocketServerFromSettings, emitIncomingCall } from './socketServer'
+import { getBuildDeveloperKey } from '../shared/buildConfig'
 
 let sipEngine: SipEngine | null = null
 let mainWindow: BrowserWindow | null = null
+let developerSessionUnlocked = false
+
+const INTEGRATION_KEYS = new Set(['apiIntegration', 'screenPop', 'socketServer'])
 
 export function initIpc(win: BrowserWindow) {
   mainWindow = win
@@ -28,8 +33,38 @@ export function initIpc(win: BrowserWindow) {
 
   ipcMain.handle('settings:set', (_e, key: string, value: unknown) => {
     setSetting(key as never, value as never)
+    if (INTEGRATION_KEYS.has(key) && developerSessionUnlocked) {
+      markDeveloperOverrides()
+    }
+    if (key === 'socketServer') {
+      void syncSocketServerFromSettings()
+    }
     return true
   })
+
+  ipcMain.handle('settings:unlockDeveloper', (_e, key: string) => {
+    const expected = getBuildDeveloperKey()
+    if (typeof key === 'string' && key.length > 0 && key === expected) {
+      developerSessionUnlocked = true
+      return { success: true }
+    }
+    return { success: false }
+  })
+
+  ipcMain.handle('settings:lockDeveloper', () => {
+    developerSessionUnlocked = false
+    return true
+  })
+
+  ipcMain.handle('settings:isDeveloperUnlocked', () => developerSessionUnlocked)
+
+  ipcMain.handle('settings:resetBuildDefaults', async () => {
+    const settings = resetToBuildDefaults()
+    await syncSocketServerFromSettings()
+    return settings
+  })
+
+  void syncSocketServerFromSettings()
 
   // Accounts
   ipcMain.handle('accounts:list', () => getSettings().accounts)
@@ -318,6 +353,7 @@ function setupSipCallbacks(engine: SipEngine, win: BrowserWindow) {
   engine.on('incoming-call', (callInfo: CallInfo) => {
     win.webContents.send('sip:incoming-call', callInfo)
     sendWebhookForEvent('incoming_call', callInfo)
+    emitIncomingCall(callInfo)
   })
 
   engine.on('call-state', (data) => {

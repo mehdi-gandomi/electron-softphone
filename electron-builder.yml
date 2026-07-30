@@ -8,7 +8,13 @@ files:
   - '!electron.vite.config.*'
   - '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+extraResources:
+  - from: resources/logo.png
+    to: logo.png
+  - from: resources/icon.png
+    to: icon.png
 win:
+  icon: resources/icon.png
   executableName: VoxPhone
   target:
     - target: nsis

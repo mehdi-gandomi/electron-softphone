@@ -4,90 +4,107 @@
 
 @layer base {
   /* ---------------------------------------------------------------
-     Theme tokens — dark is the default (:root), light overrides (.light)
-     RGB triplets so Tailwind opacity modifiers (bg-error/10 …) keep working
+     Helal Ahmar (Red Crescent) — dark emergency console is default
+     RGB triplets so Tailwind opacity modifiers keep working
      --------------------------------------------------------------- */
   :root {
-    --c-bg: 15 14 23;
-    --c-bg-surface: 26 25 40;
-    --c-bg-surface-2: 35 33 54;
-    --c-bg-surface-3: 44 42 62;
+    /* Deep charcoal / navy console */
+    --c-bg: 18 23 33;
+    --c-bg-surface: 28 34 48;
+    --c-bg-surface-2: 38 46 64;
+    --c-bg-surface-3: 48 58 78;
 
-    --c-text: 255 255 254;
-    --c-text-secondary: 167 169 190;
-    --c-text-muted: 107 109 128;
+    --c-text: 245 247 250;
+    --c-text-secondary: 168 178 196;
+    --c-text-muted: 110 122 145;
 
-    --c-accent: 127 90 240;
-    --c-accent-hover: 107 70 229;
-    --c-accent-glow: rgba(127, 90, 240, 0.25);
-    --c-accent-dim: rgba(127, 90, 240, 0.1);
+    /* Crescent red — primary brand / emergency */
+    --c-accent: 220 38 38;
+    --c-accent-hover: 185 28 28;
+    --c-accent-glow: rgba(220, 38, 38, 0.35);
+    --c-accent-dim: rgba(220, 38, 38, 0.12);
 
-    --c-success: 44 182 125;
-    --c-success-glow: rgba(44, 182, 125, 0.25);
-    --c-error: 229 49 112;
-    --c-error-glow: rgba(229, 49, 112, 0.25);
-    --c-warning: 255 137 6;
-    --c-warning-glow: rgba(255, 137, 6, 0.25);
+    /* Logo ring green — ready / connected */
+    --c-success: 34 139 74;
+    --c-success-glow: rgba(34, 139, 74, 0.3);
+    --c-error: 220 38 38;
+    --c-error-glow: rgba(220, 38, 38, 0.3);
+    --c-warning: 217 119 6;
+    --c-warning-glow: rgba(217, 119, 6, 0.25);
 
-    --c-border: rgba(255, 255, 255, 0.06);
-    --c-border-hover: rgba(255, 255, 255, 0.12);
+    --c-helal-green: 22 101 52;
+    --c-info: 14 165 180;
+
+    --c-border: rgba(255, 255, 255, 0.08);
+    --c-border-hover: rgba(255, 255, 255, 0.14);
+    --c-emergency-ring: rgba(220, 38, 38, 0.55);
 
     --overlay-1: rgba(255, 255, 255, 0.05);
     --overlay-2: rgba(255, 255, 255, 0.1);
 
-    --glass-bg: rgba(255, 255, 255, 0.03);
-    --glass-border: rgba(255, 255, 255, 0.06);
-    --glass-bg-hover: rgba(255, 255, 255, 0.06);
-    --glass-border-hover: rgba(255, 255, 255, 0.12);
+    --glass-bg: rgba(255, 255, 255, 0.04);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-bg-hover: rgba(255, 255, 255, 0.07);
+    --glass-border-hover: rgba(255, 255, 255, 0.14);
 
-    --scrollbar-thumb: rgba(255, 255, 255, 0.1);
-    --scrollbar-thumb-hover: rgba(255, 255, 255, 0.2);
+    --scrollbar-thumb: rgba(255, 255, 255, 0.12);
+    --scrollbar-thumb-hover: rgba(255, 255, 255, 0.22);
 
-    /* "Real phone" frame */
-    --frame-outer-bg: radial-gradient(120% 120% at 50% 0%, #201e30 0%, #0a0910 100%);
-    --frame-bezel: linear-gradient(160deg, #23212f 0%, #121118 100%);
-    --frame-edge: rgba(255, 255, 255, 0.08);
+    --frame-outer-bg: radial-gradient(120% 100% at 50% 0%, #1a2230 0%, #0c1018 100%);
+    --frame-bezel: linear-gradient(165deg, #2a3344 0%, #141a24 100%);
+    --frame-edge: rgba(220, 38, 38, 0.2);
+
+    --dial-key-bg: 38 46 64;
+    --dial-key-hover: 48 58 78;
   }
 
+  /* Helal light — warm rescue day mode */
   .light {
-    --c-bg: 244 244 248;
+    --c-bg: 249 247 245;
     --c-bg-surface: 255 255 255;
-    --c-bg-surface-2: 238 238 244;
-    --c-bg-surface-3: 227 227 236;
+    --c-bg-surface-2: 243 240 236;
+    --c-bg-surface-3: 232 226 220;
 
-    --c-text: 26 25 40;
-    --c-text-secondary: 84 84 102;
-    --c-text-muted: 140 140 152;
+    --c-text: 35 28 28;
+    --c-text-secondary: 90 78 78;
+    --c-text-muted: 148 136 136;
 
-    --c-accent: 113 76 224;
-    --c-accent-hover: 96 60 208;
-    --c-accent-glow: rgba(113, 76, 224, 0.2);
-    --c-accent-dim: rgba(113, 76, 224, 0.08);
+    --c-accent: 185 28 28;
+    --c-accent-hover: 153 27 27;
+    --c-accent-glow: rgba(185, 28, 28, 0.22);
+    --c-accent-dim: rgba(185, 28, 28, 0.08);
 
-    --c-success: 22 150 100;
-    --c-success-glow: rgba(22, 150, 100, 0.2);
-    --c-error: 210 30 95;
-    --c-error-glow: rgba(210, 30, 95, 0.2);
-    --c-warning: 200 105 0;
-    --c-warning-glow: rgba(200, 105, 0, 0.2);
+    --c-success: 22 120 60;
+    --c-success-glow: rgba(22, 120, 60, 0.2);
+    --c-error: 185 28 28;
+    --c-error-glow: rgba(185, 28, 28, 0.2);
+    --c-warning: 180 100 0;
+    --c-warning-glow: rgba(180, 100, 0, 0.2);
 
-    --c-border: rgba(15, 14, 23, 0.08);
-    --c-border-hover: rgba(15, 14, 23, 0.16);
+    --c-helal-green: 22 101 52;
+    --c-info: 14 140 150;
 
-    --overlay-1: rgba(15, 14, 23, 0.04);
-    --overlay-2: rgba(15, 14, 23, 0.08);
+    --c-border: rgba(35, 28, 28, 0.08);
+    --c-border-hover: rgba(35, 28, 28, 0.16);
+    --c-emergency-ring: rgba(185, 28, 28, 0.45);
 
-    --glass-bg: rgba(255, 255, 255, 0.65);
-    --glass-border: rgba(15, 14, 23, 0.08);
-    --glass-bg-hover: rgba(255, 255, 255, 0.85);
-    --glass-border-hover: rgba(15, 14, 23, 0.16);
+    --overlay-1: rgba(35, 28, 28, 0.04);
+    --overlay-2: rgba(35, 28, 28, 0.08);
 
-    --scrollbar-thumb: rgba(0, 0, 0, 0.15);
-    --scrollbar-thumb-hover: rgba(0, 0, 0, 0.25);
+    --glass-bg: rgba(255, 255, 255, 0.72);
+    --glass-border: rgba(35, 28, 28, 0.08);
+    --glass-bg-hover: rgba(255, 255, 255, 0.9);
+    --glass-border-hover: rgba(35, 28, 28, 0.14);
 
-    --frame-outer-bg: radial-gradient(120% 120% at 50% 0%, #eceef5 0%, #cfd3de 100%);
-    --frame-bezel: linear-gradient(160deg, #fdfdfe 0%, #d8dae2 100%);
-    --frame-edge: rgba(15, 14, 23, 0.12);
+    --scrollbar-thumb: rgba(0, 0, 0, 0.12);
+    --scrollbar-thumb-hover: rgba(0, 0, 0, 0.22);
+
+    --frame-outer-bg: radial-gradient(120% 100% at 50% 0%, #f3ebe8 0%, #d9cfc9 100%);
+    --frame-bezel: linear-gradient(165deg, #ffffff 0%, #e8dfda 100%);
+    --frame-edge: rgba(185, 28, 28, 0.18);
+
+    --dial-key-bg: 255 255 255;
+    --dial-key-hover: 249 247 245;
   }
 
   * {
@@ -158,7 +175,15 @@
     box-shadow: 0 0 20px var(--c-error-glow);
   }
 
-  /* Theme-aware hover overlay (replaces hover:bg-white/5 patterns) */
+  .emergency-panel {
+    border: 1.5px solid var(--c-emergency-ring);
+    box-shadow: 0 0 0 1px var(--c-accent-dim), 0 0 28px var(--c-accent-glow);
+  }
+
+  .status-pill {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium border;
+  }
+
   .hover-overlay:hover {
     background: var(--overlay-1);
   }
@@ -175,11 +200,11 @@
   }
 
   .btn-danger {
-    @apply bg-error hover:bg-red-600 text-white font-medium rounded-xl px-4 py-2.5 transition-all duration-200;
+    @apply bg-error hover:bg-red-700 text-white font-medium rounded-xl px-4 py-2.5 transition-all duration-200;
   }
 
   .btn-success {
-    @apply bg-success hover:bg-emerald-600 text-white font-medium rounded-xl px-4 py-2.5 transition-all duration-200;
+    @apply bg-success hover:bg-emerald-700 text-white font-medium rounded-xl px-4 py-2.5 transition-all duration-200;
   }
 
   .input-field {
@@ -191,7 +216,7 @@
   }
 
   .title-bar {
-    @apply flex items-center justify-between px-4 py-2 bg-bg-surface border-b border-border select-none;
+    @apply flex items-center justify-between px-3 py-2.5 bg-bg-surface border-b border-border select-none;
     -webkit-app-region: drag;
   }
 
@@ -203,7 +228,14 @@
     background: var(--overlay-2);
   }
 
-  /* shadcn-style volume slider (native input, themed) */
+  .dial-key {
+    background: rgb(var(--dial-key-bg));
+    transition: background 0.15s ease, transform 0.1s ease, border-color 0.15s ease;
+  }
+  .dial-key:hover {
+    background: rgb(var(--dial-key-hover));
+  }
+
   .ui-slider {
     -webkit-appearance: none;
     appearance: none;

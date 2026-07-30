@@ -1,9 +1,13 @@
 import Store from 'electron-store'
 import type { AppSettings, SipAccount } from '../shared/types'
+import { getBuildIntegrationDefaults } from '../shared/buildConfig'
+
+const buildDefaults = getBuildIntegrationDefaults()
 
 const defaults: AppSettings = {
   accounts: [],
   activeAccountId: '',
+  locale: 'fa',
   ringtonePath: '',
   ringtonePreset: 'classic',
   ringtoneVolume: 0.7,
@@ -24,54 +28,58 @@ const defaults: AppSettings = {
     hangup: 'F4',
     toggleMute: 'Ctrl+M',
   },
-  apiIntegration: {
-    enabled: false,
-    webhookUrl: '',
-    apiKey: '',
-    events: {
-      incomingCall: true,
-      callAnswered: true,
-      callEnded: true,
-      callMissed: true,
-    },
-    autoFillFields: [
-      { key: 'caller_id', label: 'Caller ID', source: 'caller_id' },
-      { key: 'extension', label: 'Extension', source: 'extension' },
-      { key: 'timestamp', label: 'Timestamp', source: 'timestamp' },
-    ],
-  },
-  screenPop: {
-    enabled: false,
-    baseUrl: '',
-    issabelHeader: 'X-UniqueID',
-    params: [
-      { name: 'phone', source: 'caller_id' },
-      { name: 'extension', source: 'extension' },
-      { name: 'issabel_id', source: 'issabel_id' },
-      { name: 'answered', source: 'answer_datetime' },
-    ],
-  },
+  apiIntegration: buildDefaults.apiIntegration,
+  screenPop: buildDefaults.screenPop,
+  socketServer: buildDefaults.socketServer,
+  developerOverrides: false,
 }
 
 const store = new Store<AppSettings>({ name: 'voxphone-settings', defaults })
 
+function applyBuildIntegrations(): void {
+  const fromBuild = getBuildIntegrationDefaults()
+  store.set('apiIntegration', fromBuild.apiIntegration)
+  store.set('screenPop', fromBuild.screenPop)
+  store.set('socketServer', fromBuild.socketServer)
+}
+
 export function getSettings(): AppSettings {
   const settings = store.store
+  if (!settings.locale) {
+    settings.locale = 'fa'
+  }
   // Migrate older installs that predate screenPop
   if (!settings.screenPop) {
-    settings.screenPop = {
-      enabled: false,
-      baseUrl: '',
-      issabelHeader: 'X-UniqueID',
-      params: [
-        { name: 'phone', source: 'caller_id' },
-        { name: 'extension', source: 'extension' },
-        { name: 'issabel_id', source: 'issabel_id' },
-        { name: 'answered', source: 'answer_datetime' },
-      ],
-    }
+    settings.screenPop = getBuildIntegrationDefaults().screenPop
   }
+  if (!settings.socketServer) {
+    settings.socketServer = getBuildIntegrationDefaults().socketServer
+  }
+  if (typeof settings.developerOverrides !== 'boolean') {
+    settings.developerOverrides = false
+    store.set('developerOverrides', false)
+  }
+  if (settings.locale !== 'fa' && settings.locale !== 'en') {
+    settings.locale = 'fa'
+  }
+
+  // Normal users: build.json wins every launch until a developer saves overrides
+  if (!settings.developerOverrides) {
+    applyBuildIntegrations()
+    return store.store
+  }
+
   return settings
+}
+
+export function resetToBuildDefaults(): AppSettings {
+  store.set('developerOverrides', false)
+  applyBuildIntegrations()
+  return getSettings()
+}
+
+export function markDeveloperOverrides(): void {
+  store.set('developerOverrides', true)
 }
 
 export function getSetting<K extends keyof AppSettings>(key: K): AppSettings[K] {

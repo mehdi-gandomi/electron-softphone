@@ -1,21 +1,23 @@
 import { app, BrowserWindow, globalShortcut, ipcMain, session } from 'electron'
 import path from 'path'
 import { initIpc, stopSipEngine } from './ipc'
-import { createTray, destroyTray, isAppQuitting } from './tray'
+import { createTray, destroyTray, isAppQuitting, getResourcePath } from './tray'
 import { getSettings } from './store'
 import { ensureDefaultRingtones } from './ringtone'
+import { stopSocketServer } from './socketServer'
 
 let mainWindow: BrowserWindow | null = null
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 420,
-    height: 720,
-    minWidth: 380,
-    minHeight: 600,
+    width: 400,
+    height: 580,
+    minWidth: 400,
+    minHeight: 580,
+    resizable: true,
     frame: false,
     transparent: false,
-    backgroundColor: '#0F0E17',
+    backgroundColor: '#121721',
     titleBarStyle: 'hidden',
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
@@ -23,7 +25,7 @@ function createWindow() {
       contextIsolation: true,
       sandbox: false,
     },
-    icon: path.join(__dirname, '../../resources/icon.ico'),
+    icon: getResourcePath('logo.png'),
     show: false,
   })
 
@@ -120,6 +122,7 @@ app.whenReady().then(() => {
 app.on('before-quit', () => {
   // Fire-and-forget unregister; do not block quit
   void stopSipEngine()
+  void stopSocketServer()
 })
 
 app.on('window-all-closed', () => {

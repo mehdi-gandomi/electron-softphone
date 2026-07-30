@@ -34,6 +34,9 @@ module.exports = {
           DEFAULT: 'rgb(var(--c-warning) / <alpha-value>)',
           glow: 'var(--c-warning-glow)',
         },
+        info: {
+          DEFAULT: 'rgb(var(--c-info) / <alpha-value>)',
+        },
         border: {
           DEFAULT: 'var(--c-border)',
           hover: 'var(--c-border-hover)',

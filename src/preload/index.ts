@@ -13,6 +13,10 @@ export interface ElectronAPI {
   settings: {
     get: () => Promise<Record<string, unknown>>
     set: (key: string, value: unknown) => Promise<boolean>
+    unlockDeveloper: (key: string) => Promise<{ success: boolean }>
+    lockDeveloper: () => Promise<boolean>
+    isDeveloperUnlocked: () => Promise<boolean>
+    resetBuildDefaults: () => Promise<Record<string, unknown>>
   }
 
   // Accounts
@@ -87,6 +91,10 @@ const api: ElectronAPI = {
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),
     set: (key, value) => ipcRenderer.invoke('settings:set', key, value),
+    unlockDeveloper: (key) => ipcRenderer.invoke('settings:unlockDeveloper', key),
+    lockDeveloper: () => ipcRenderer.invoke('settings:lockDeveloper'),
+    isDeveloperUnlocked: () => ipcRenderer.invoke('settings:isDeveloperUnlocked'),
+    resetBuildDefaults: () => ipcRenderer.invoke('settings:resetBuildDefaults'),
   },
 
   accounts: {

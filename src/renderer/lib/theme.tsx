@@ -1,11 +1,13 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 
-type Theme = 'dark' | 'light'
+/** Helal Ahmar themes — dark emergency console (default) and light day mode */
+export type Theme = 'dark' | 'light'
 
 interface ThemeContextValue {
   theme: Theme
   toggleTheme: () => void
   setTheme: (t: Theme) => void
+  isDark: boolean
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
@@ -16,6 +18,9 @@ function getInitialTheme(): Theme {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored === 'light' || stored === 'dark') return stored
+    // Migrate older keys if any
+    if (stored === 'helal-light') return 'light'
+    if (stored === 'helal-dark') return 'dark'
   } catch {
     /* ignore */
   }
@@ -29,6 +34,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const root = document.documentElement
     root.classList.toggle('light', theme === 'light')
     root.classList.toggle('dark', theme === 'dark')
+    root.dataset.theme = theme === 'light' ? 'helal-light' : 'helal-dark'
     try {
       localStorage.setItem(STORAGE_KEY, theme)
     } catch {
@@ -39,7 +45,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme, isDark: theme === 'dark' }}>
       {children}
     </ThemeContext.Provider>
   )

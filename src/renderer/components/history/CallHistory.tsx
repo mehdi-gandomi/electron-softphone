@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useHistoryStore } from '../../stores/historyStore'
+import { useI18n } from '../../lib/i18n'
 import { formatDate, formatDuration } from '../../lib/utils'
-import type { CallRecord } from '../../../shared/types'
 
 type Filter = 'all' | 'missed' | 'dialed' | 'received'
 
 export function CallHistory() {
+  const { t } = useI18n()
   const { records, getFiltered, clearAll } = useHistoryStore()
   const [filter, setFilter] = useState<Filter>('all')
   const filtered = getFiltered(filter)
@@ -35,20 +36,20 @@ export function CallHistory() {
     )
 
   const tabs: { id: Filter; label: string; count: number }[] = [
-    { id: 'all', label: 'همه', count: records.length },
-    { id: 'missed', label: 'بی‌پاسخ', count: records.filter(r => r.result === 'missed').length },
-    { id: 'dialed', label: 'گرفته‌شده', count: records.filter(r => r.direction === 'outbound').length },
-    { id: 'received', label: 'دریافتی', count: records.filter(r => r.direction === 'inbound' && r.result === 'answered').length },
+    { id: 'all', label: t('history.all'), count: records.length },
+    { id: 'missed', label: t('history.missed'), count: records.filter(r => r.result === 'missed').length },
+    { id: 'dialed', label: t('history.dialed'), count: records.filter(r => r.direction === 'outbound').length },
+    { id: 'received', label: t('history.received'), count: records.filter(r => r.direction === 'inbound' && r.result === 'answered').length },
   ]
 
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-lg font-semibold text-text">تماس‌های اخیر</h1>
+        <h1 className="text-lg font-semibold text-text">{t('history.title')}</h1>
         {records.length > 0 && (
           <button onClick={clearAll} className="text-xs text-text-muted hover:text-error transition-colors">
-            حذف همه
+            {t('history.clearAll')}
           </button>
         )}
       </div>
@@ -86,7 +87,7 @@ export function CallHistory() {
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-2 opacity-50">
               <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72"/>
             </svg>
-            <p className="text-sm">هنوز تماسی ثبت نشده است</p>
+            <p className="text-sm">{t('history.empty')}</p>
           </div>
         ) : (
           filtered.map((record) => (
@@ -104,13 +105,13 @@ export function CallHistory() {
                   <span className="text-text-muted">{directionIcon(record.direction)}</span>
                   {record.result === 'missed' && (
                     <span className="px-1.5 py-0.5 rounded-full bg-error/15 text-error text-[9px] font-bold flex-shrink-0">
-                      بی‌پاسخ
+                      {t('history.missedBadge')}
                     </span>
                   )}
                 </div>
                 <p className="text-xs text-text-secondary font-mono truncate" dir="ltr">{record.number}</p>
               </div>
-              <div className="text-right flex-shrink-0">
+              <div className="text-end flex-shrink-0">
                 <p className="text-xs text-text-muted">{formatDate(record.timestamp)}</p>
                 {record.duration > 0 && (
                   <p className="text-[10px] text-text-muted">{formatDuration(record.duration)}</p>
