@@ -1,6 +1,6 @@
 {
   "name": "emdadphone",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Modern SIP Softphone",
   "main": "./out/main/index.js",
   "author": "EmdadPhone",
