@@ -58,6 +58,63 @@ export interface ElectronAPI {
     sendWebhook: (event: string, data: Record<string, unknown>) => Promise<{ success: boolean; error?: string }>
   }
 
+  socket: {
+    status: () => Promise<{
+      running: boolean
+      httpsRunning: boolean
+      enabled: boolean
+      reachable: boolean
+      host: string
+      port: number
+      httpsPort: number
+      url: string
+      httpsUrl: string
+      clients: number
+      detail: string
+    }>
+    tlsStatus: () => Promise<{
+      installed: boolean
+      thumbprint?: string
+      error?: string
+    }>
+    installTlsCert: () => Promise<{
+      success: boolean
+      alreadyInstalled?: boolean
+      thumbprint?: string
+      error?: string
+      message?: string
+    }>
+    firefoxEnterpriseRootsStatus: () => Promise<{
+      configured: boolean
+      profilesChecked: number
+      detail?: string
+    }>
+    enableFirefoxEnterpriseRoots: () => Promise<{
+      success: boolean
+      profilesUpdated: number
+      profilePaths: string[]
+      policyPath?: string
+      alreadyConfigured?: boolean
+      error?: string
+      message?: string
+    }>
+    restartFirefox: () => Promise<{
+      success: boolean
+      killed: boolean
+      launched: boolean
+      exePath?: string
+      error?: string
+      message?: string
+    }>
+    openHttpsTrustPage: () => Promise<{ success: boolean; error?: string }>
+    emitNuisance: (payload: {
+      callId: string
+      nuisanceType: number
+      nuisanceLabel: string
+    }) => Promise<{ success: boolean; error?: string; clients?: number }>
+    emitOperator: () => Promise<{ success: boolean; error?: string; clients?: number }>
+  }
+
   // Event listeners
   on: (channel: string, callback: (...args: unknown[]) => void) => void
   off: (channel: string, callback: (...args: unknown[]) => void) => void
@@ -70,6 +127,11 @@ export interface ElectronAPI {
     saveLog: (text: string) => Promise<{ success: boolean; path?: string; error?: string }>
     openLogsFolder: () => Promise<{ success: boolean; path?: string }>
     getLogFilePath: () => Promise<string>
+    emulateIncomingCall: (payload?: {
+      callerId?: string
+      callerName?: string
+      issabelId?: string
+    }) => Promise<{ success: boolean; callId?: string; error?: string }>
   }
 
   ringtone: {
@@ -77,6 +139,84 @@ export interface ElectronAPI {
     import: () => Promise<{ success: boolean; path?: string; name?: string; error?: string }>
     readDataUrl: (filePath: string) => Promise<{ success: boolean; dataUrl?: string; error?: string }>
     resolve: (preset: string, customPath: string) => Promise<string>
+  }
+
+  recording: {
+    getDefaultPath: () => Promise<string>
+    getResolvedPath: () => Promise<string>
+    pickFolder: () => Promise<{ success: boolean; path?: string; error?: string }>
+    openFolder: () => Promise<{ success: boolean; path?: string }>
+    revealFile: (filePath: string) => Promise<{ success: boolean; error?: string }>
+    readDataUrl: (filePath: string) => Promise<{ success: boolean; dataUrl?: string; error?: string }>
+  }
+
+  auth: {
+    shiftInfo: (nationalCode: string) => Promise<{
+      ok: boolean
+      status: number
+      json: unknown | null
+      error?: string
+    }>
+    login: (username: string, password: string) => Promise<{
+      ok: boolean
+      status: number
+      json: unknown | null
+      error?: string
+    }>
+  }
+
+  system: {
+    checkClock: () => Promise<{
+      ok: boolean
+      blocked: boolean
+      skewMs: number
+      maxSkewMs: number
+      localTimeMs: number
+      trustedTimeMs: number | null
+      source: string | null
+      localLabel: string
+      trustedLabel: string | null
+      error?: string
+    }>
+    openDateSettings: () => Promise<{ success: boolean; error?: string }>
+  }
+
+  extensions: {
+    status: (provinceId: number) => Promise<{
+      ok: boolean
+      status: number
+      json: unknown | null
+      error?: string
+    }>
+    reserve: (payload: {
+      provinceId: number
+      nationalCode: string
+      extension: string
+    }) => Promise<{
+      ok: boolean
+      status: number
+      json: unknown | null
+      error?: string
+    }>
+    logout: (payload: {
+      nationalCode: string
+      extension: string
+      provinceId?: number
+    }) => Promise<{
+      ok: boolean
+      status: number
+      json: unknown | null
+      error?: string
+    }>
+  }
+
+  updater: {
+    status: () => Promise<import('../shared/types').UpdaterStatus>
+    check: () => Promise<import('../shared/types').UpdaterStatus>
+    download: () => Promise<import('../shared/types').UpdaterStatus>
+    install: () => Promise<{ success: boolean; error?: string }>
+    openRelease: () => Promise<{ success: boolean; error?: string }>
+    onStatus: (callback: (status: import('../shared/types').UpdaterStatus) => void) => () => void
   }
 }
 
@@ -148,6 +288,20 @@ const api: ElectronAPI = {
     sendWebhook: (event, data) => ipcRenderer.invoke('api:send-webhook', event, data),
   },
 
+  socket: {
+    status: () => ipcRenderer.invoke('socket:status'),
+    tlsStatus: () => ipcRenderer.invoke('socket:tls-status'),
+    installTlsCert: () => ipcRenderer.invoke('socket:install-tls-cert'),
+    firefoxEnterpriseRootsStatus: () =>
+      ipcRenderer.invoke('socket:firefox-enterprise-roots-status'),
+    enableFirefoxEnterpriseRoots: () =>
+      ipcRenderer.invoke('socket:enable-firefox-enterprise-roots'),
+    restartFirefox: () => ipcRenderer.invoke('socket:restart-firefox'),
+    openHttpsTrustPage: () => ipcRenderer.invoke('socket:open-https-trust'),
+    emitNuisance: (payload) => ipcRenderer.invoke('socket:emit-nuisance', payload),
+    emitOperator: () => ipcRenderer.invoke('socket:emit-operator'),
+  },
+
   clipboard: {
     writeText: (text) => ipcRenderer.invoke('clipboard:writeText', text),
   },
@@ -156,6 +310,8 @@ const api: ElectronAPI = {
     saveLog: (text) => ipcRenderer.invoke('debug:save-log', text),
     openLogsFolder: () => ipcRenderer.invoke('debug:open-logs-folder'),
     getLogFilePath: () => ipcRenderer.invoke('debug:get-log-file-path'),
+    emulateIncomingCall: (payload) =>
+      ipcRenderer.invoke('debug:emulate-incoming-call', payload),
   },
 
   ringtone: {
@@ -163,6 +319,48 @@ const api: ElectronAPI = {
     import: () => ipcRenderer.invoke('ringtone:import'),
     readDataUrl: (filePath) => ipcRenderer.invoke('ringtone:read-data-url', filePath),
     resolve: (preset, customPath) => ipcRenderer.invoke('ringtone:resolve', preset, customPath),
+  },
+
+  recording: {
+    getDefaultPath: () => ipcRenderer.invoke('recording:get-default-path'),
+    getResolvedPath: () => ipcRenderer.invoke('recording:get-resolved-path'),
+    pickFolder: () => ipcRenderer.invoke('recording:pick-folder'),
+    openFolder: () => ipcRenderer.invoke('recording:open-folder'),
+    revealFile: (filePath) => ipcRenderer.invoke('recording:reveal-file', filePath),
+    readDataUrl: (filePath) => ipcRenderer.invoke('recording:read-data-url', filePath),
+  },
+
+  auth: {
+    shiftInfo: (nationalCode) => ipcRenderer.invoke('auth:shift-info', nationalCode),
+    login: (username, password) => ipcRenderer.invoke('auth:login', username, password),
+  },
+
+  system: {
+    checkClock: () => ipcRenderer.invoke('system:check-clock'),
+    openDateSettings: () => ipcRenderer.invoke('system:open-date-settings'),
+  },
+
+  extensions: {
+    status: (provinceId) => ipcRenderer.invoke('extensions:status', provinceId),
+    reserve: (payload) => ipcRenderer.invoke('extensions:reserve', payload),
+    logout: (payload) => ipcRenderer.invoke('extensions:logout', payload),
+  },
+
+  updater: {
+    status: () => ipcRenderer.invoke('updater:status'),
+    check: () => ipcRenderer.invoke('updater:check'),
+    download: () => ipcRenderer.invoke('updater:download'),
+    install: () => ipcRenderer.invoke('updater:install'),
+    openRelease: () => ipcRenderer.invoke('updater:open-release'),
+    onStatus: (callback) => {
+      const handler = (_event: Electron.IpcRendererEvent, next: import('../shared/types').UpdaterStatus) => {
+        callback(next)
+      }
+      ipcRenderer.on('updater:status', handler)
+      return () => {
+        ipcRenderer.removeListener('updater:status', handler)
+      }
+    },
   },
 
   on: (channel, callback) => {

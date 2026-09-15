@@ -22,6 +22,23 @@ export interface SipAccount {
 
 export type Codec = 'PCMU' | 'PCMA' | 'opus'
 
+/** Nuisance / مزاحم report categories (emdad contact form). */
+export const NuisanceType = {
+  INSULT: 1,
+  ENTERTAINMENT: 2,
+  SILENCE: 3,
+  EMERGENCY_TEST: 4,
+} as const
+
+export type NuisanceTypeId = (typeof NuisanceType)[keyof typeof NuisanceType]
+
+export const NUISANCE_TYPE_IDS: NuisanceTypeId[] = [
+  NuisanceType.INSULT,
+  NuisanceType.ENTERTAINMENT,
+  NuisanceType.SILENCE,
+  NuisanceType.EMERGENCY_TEST,
+]
+
 // --- SIP Registration ---
 export type RegistrationStatus = 'disconnected' | 'connecting' | 'registered' | 'failed' | 'expired'
 
@@ -95,6 +112,8 @@ export interface CallRecord {
   duration: number
   timestamp: number
   codec?: Codec
+  /** Absolute path to mixed WAV when auto-record captured this call */
+  recordingPath?: string
 }
 
 // --- Settings ---
@@ -118,6 +137,12 @@ export interface AppSettings {
   callForwardNumber: string
   autoAnswer: boolean
   autoAnswerDelay: number
+  /** When true, answered calls are recorded to WAV automatically */
+  autoRecordCalls: boolean
+  /** When true, record stereo (L=local, R=remote); false = mixed mono (default) */
+  recordingStereo: boolean
+  /** Custom recordings folder; empty = use {userData}/recordings */
+  recordingPath: string
   enableLogging: boolean
   enableTray: boolean
   minimizeToTray: boolean
@@ -130,7 +155,14 @@ export interface AppSettings {
    * Set true after a developer unlocks and saves those sections.
    */
   developerOverrides: boolean
+  /**
+   * How often (minutes) to check whether the user's shift has ended while logged in.
+   * Editable in developer mode. Default: 10.
+   */
+  shiftCheckIntervalMinutes: number
   userAccess: UserAccessState
+  latestShiftLookup: LatestShiftLookup | null
+  authSession: AuthSession | null
 }
 
 export interface UserProfile {
@@ -142,23 +174,95 @@ export interface UserProfile {
   startDateTime: string
   endDateTime: string
   position: string
+  provinceId?: number
+  provinceTitle?: string
+  branchId?: number
+  branchTitle?: string
+  memberId?: number
+  postId?: number
+  postTitleId?: number
+  operationalCenterId?: number
 }
 
 export interface UserAccessState {
   status: 'needs_login' | 'skipped' | 'logged_in'
   profile: UserProfile | null
   selectedExtensionId: string
+  reservedExtension?: ReservedExtensionState | null
+}
+
+export interface ShiftAssignment {
+  personnelId: number
+  memberId: number
+  postId: number
+  postTitleId: number
+  postTitle: string
+  operationalCenterId: number
+  shiftTime: number
+  order: number
+  typeDay: number
+  orderShift: number
+  shiftSlotRule: number
+  shiftKind: number
+}
+
+export interface LatestShiftLookup {
+  nationalCode: string
+  hasShift: boolean
+  /** True when current local time falls inside the assigned shift window */
+  isOnShift: boolean
+  profile: UserProfile
+  shifts: ShiftAssignment[]
+  fetchedAt: string
+}
+
+export interface AuthSession {
+  token: string
+  tokenType: string
+  message: string
+  user: {
+    id: number
+    name: string
+    username: string
+    email: string | null
+    mobile: string | null
+    avatarUrl: string | null
+  }
+  member: {
+    id: number
+    nationalCode: string
+    fullName: string
+    reliefLevel: string | null
+    avatarUrl: string | null
+  }
+  loggedInAt: string
 }
 
 export interface ExtensionInfo {
   id: string
   label: string
   province: string
+  provinceId?: number
   extension: string
+  /** SIP auth username from reserve response (may differ from extension) */
+  username?: string
   host: string
   password: string
   displayName: string
   registeredElsewhere: boolean
+  /** Occupying national code when status is used */
+  occupiedByNationalCode?: string | null
+}
+
+export interface ReservedExtensionState {
+  extension: string
+  provinceId: number
+  reservationId?: number
+  reservedAt?: string
+  /** SIP credentials from reserve response — do not invent */
+  ip?: string
+  username?: string
+  password?: string
 }
 
 export interface SocketServerSettings {
@@ -229,7 +333,18 @@ export interface IpcMessages {
   'sip:incoming-call': CallInfo
   'sip:outgoing-call': CallInfo
   'sip:call-state': { callId: string; state: CallState }
-  'sip:call-ended': { callId: string; duration: number }
+  'sip:call-ended': {
+    callId: string
+    duration: number
+    direction?: CallDirection
+    remoteNumber?: string
+    remoteName?: string
+    answered?: boolean
+    result?: CallResult
+    codec?: Codec
+    timestamp?: number
+    recordingPath?: string
+  }
   'sip:dtmf-sent': { callId: string; digit: string }
   'sip:audio-device-changed': { devices: AudioDevice[] }
 
@@ -254,4 +369,26 @@ export interface AudioDevice {
   id: string
   name: string
   kind: 'audioinput' | 'audiooutput'
+}
+
+export type UpdaterState =
+  | 'idle'
+  | 'checking'
+  | 'available'
+  | 'unavailable'
+  | 'downloading'
+  | 'ready'
+  | 'error'
+
+export interface UpdaterStatus {
+  currentVersion: string
+  latestVersion: string | null
+  releaseNotes: string
+  releaseUrl: string
+  state: UpdaterState
+  progress: number
+  error: string | null
+  canInstall: boolean
+  packaged: boolean
+  portable: boolean
 }

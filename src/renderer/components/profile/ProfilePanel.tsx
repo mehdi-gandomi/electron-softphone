@@ -1,9 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { LoginGate } from '../auth/LoginGate'
 import { ExtensionPicker } from '../auth/ExtensionPicker'
 import { useI18n } from '../../lib/i18n'
+import { nationalCodesEqual } from '../../../shared/nationalCode'
 import type {
+  AuthSession,
   ExtensionInfo,
+  LatestShiftLookup,
   UserAccessState,
   UserProfile,
 } from '../../../shared/types'
@@ -11,8 +14,23 @@ import type {
 interface ProfilePanelProps {
   userAccess: UserAccessState
   onLoginSuccess: (profile: UserProfile) => void
-  onLogout: () => void
-  onSelectExtension: (extension: ExtensionInfo) => void
+  onLogout: () => void | Promise<void>
+  onSelectExtension: (
+    extension: ExtensionInfo,
+    reservation?: {
+      reservationId?: number
+      provinceId?: number
+      extension?: string
+      reservedAt?: string
+      ip?: string
+      username?: string
+      password?: string
+    }
+  ) => void | Promise<void | { success: boolean; error?: string }>
+  onSkipLogin?: () => void
+  onSkipExtension?: () => void
+  onOpenExtensionPicker?: () => void
+  canChangeExtension?: boolean
   selectedExtension: ExtensionInfo | null
 }
 
@@ -21,6 +39,10 @@ export function ProfilePanel({
   onLoginSuccess,
   onLogout,
   onSelectExtension,
+  onSkipLogin,
+  onSkipExtension,
+  onOpenExtensionPicker,
+  canChangeExtension = false,
   selectedExtension,
 }: ProfilePanelProps) {
   const { t } = useI18n()
@@ -30,40 +52,79 @@ export function ProfilePanel({
   const [logoutNotes, setLogoutNotes] = useState('')
   const [sendSms, setSendSms] = useState(true)
   const [sendDefinedSms, setSendDefinedSms] = useState(false)
+  const [latestShiftLookup, setLatestShiftLookup] = useState<LatestShiftLookup | null>(null)
+  const [authSession, setAuthSession] = useState<AuthSession | null>(null)
+
+  useEffect(() => {
+    window.api.settings.get().then((settings) => {
+      const value = settings as {
+        latestShiftLookup?: LatestShiftLookup | null
+        authSession?: AuthSession | null
+      }
+      setLatestShiftLookup(value.latestShiftLookup || null)
+      setAuthSession(value.authSession || null)
+    })
+  }, [userAccess.status, userAccess.profile?.nationalCode])
 
   if (userAccess.status !== 'logged_in' || !profile) {
     return (
       <div className="h-full">
-        <LoginGate onLoginSuccess={onLoginSuccess} />
+        <LoginGate
+          allowSkip
+          onSkip={onSkipLogin}
+          onLoginSuccess={onLoginSuccess}
+        />
       </div>
     )
   }
 
   if (!userAccess.selectedExtensionId) {
-    return <ExtensionPicker onSelect={onSelectExtension} />
+    if (!profile.provinceId) {
+      return (
+        <div className="rounded-3xl border border-warning/40 bg-warning/10 p-4 text-sm text-text space-y-3">
+          <p>شناسه استان برای دریافت داخلی‌ها در دسترس نیست.</p>
+          {onSkipExtension && (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={onSkipExtension}
+                className="text-xs text-text-muted hover:text-text transition-colors"
+              >
+                {t('auth.skip')}
+              </button>
+            </div>
+          )}
+        </div>
+      )
+    }
+    return (
+      <ExtensionPicker
+        provinceId={profile.provinceId}
+        provinceTitle={profile.provinceTitle || ''}
+        nationalCode={profile.nationalCode}
+        onSelect={onSelectExtension}
+        onSkip={onSkipExtension}
+      />
+    )
   }
 
-  const handleConfirmLogout = () => {
+  const handleConfirmLogout = async () => {
     if (!logoutReason) return
 
-    // TODO: Replace this payload handoff with the real logout API request once the endpoint is available.
-    const logoutPayload = {
+    // Reason/notes kept for a future telemetry endpoint; extension release runs in onLogout.
+    void {
       reason: logoutReason,
       notes: logoutNotes.trim(),
-      notify: {
-        sendSms,
-        sendDefinedSms,
-      },
+      notify: { sendSms, sendDefinedSms },
       extensionId: selectedExtension?.id || '',
     }
-    void logoutPayload
 
     setShowLogoutModal(false)
     setLogoutReason('')
     setLogoutNotes('')
     setSendSms(true)
     setSendDefinedSms(false)
-    onLogout()
+    await onLogout()
   }
 
   const logoutReasonOptions: Array<{
@@ -126,12 +187,79 @@ export function ProfilePanel({
           <ProfileRow label={t('auth.firstName')} value={profile.firstName} />
           <ProfileRow label={t('auth.lastName')} value={profile.lastName} />
           <ProfileRow label={t('auth.position')} value={profile.position} />
-          <ProfileRow label={t('auth.shiftHour')} value={profile.shiftHour} />
+          <ProfileRow label={t('auth.shiftType')} value={profile.shiftHour} />
           <ProfileRow label={t('auth.startDateTime')} value={profile.startDateTime} />
           <ProfileRow label={t('auth.endDateTime')} value={profile.endDateTime} />
           <ProfileRow label={t('auth.selectedProvince')} value={selectedExtension?.province || ''} />
           <ProfileRow label={t('auth.selectedExtension')} value={selectedExtension?.extension || ''} mono />
         </div>
+
+        {canChangeExtension && onOpenExtensionPicker && (
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={onOpenExtensionPicker}
+              className="btn-primary w-full text-sm py-2"
+            >
+              {t('auth.changeExtension')}
+            </button>
+          </div>
+        )}
+
+        {authSession && (
+          <div className="mt-5 rounded-3xl border border-secondary/20 bg-secondary/5 p-4">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div>
+                <h2 className="text-sm font-bold text-text">{t('auth.loginStoredTitle')}</h2>
+                <p className="text-xs text-text-secondary mt-1">
+                  {authSession.message || t('auth.loginStoredHelp')}
+                </p>
+              </div>
+              <div className="text-[10px] text-text-muted" dir="ltr">
+                {new Date(authSession.loggedInAt).toLocaleString()}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2 text-sm">
+              <ProfileRow label={t('auth.fullName')} value={authSession.member.fullName || authSession.user.name} />
+              <ProfileRow label={t('auth.username')} value={authSession.user.username} mono />
+              <ProfileRow label={t('auth.mobile')} value={authSession.user.mobile || ''} mono />
+              <ProfileRow label={t('auth.email')} value={authSession.user.email || ''} />
+              <ProfileRow label={t('auth.reliefLevel')} value={authSession.member.reliefLevel || ''} />
+              <ProfileRow label={t('auth.memberId')} value={String(authSession.member.id || '')} mono />
+            </div>
+          </div>
+        )}
+
+        {latestShiftLookup &&
+          nationalCodesEqual(latestShiftLookup.profile.nationalCode, profile.nationalCode) && (
+          <div className="mt-5 rounded-3xl border border-primary/20 bg-primary/5 p-4">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div>
+                <h2 className="text-sm font-bold text-text">{t('auth.shiftStoredTitle')}</h2>
+                <p className="text-xs text-text-secondary mt-1">
+                  {latestShiftLookup.isOnShift
+                    ? t('auth.shiftStoredAvailable')
+                    : latestShiftLookup.hasShift
+                      ? t('auth.outsideShift')
+                      : t('auth.noShiftToday')}
+                </p>
+              </div>
+              <div className="text-[10px] text-text-muted" dir="ltr">
+                {new Date(latestShiftLookup.fetchedAt).toLocaleString()}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2 text-sm">
+              <ProfileRow label={t('auth.position')} value={latestShiftLookup.profile.position} />
+              <ProfileRow label={t('auth.province')} value={latestShiftLookup.profile.provinceTitle || ''} />
+              <ProfileRow label={t('auth.location')} value={latestShiftLookup.profile.branchTitle || ''} />
+              <ProfileRow label={t('auth.shiftType')} value={latestShiftLookup.profile.shiftHour} />
+              <ProfileRow label={t('auth.startDateTime')} value={latestShiftLookup.profile.startDateTime} />
+              <ProfileRow label={t('auth.endDateTime')} value={latestShiftLookup.profile.endDateTime} />
+            </div>
+          </div>
+        )}
 
         <div className="mt-5 flex justify-end">
           <button
@@ -258,7 +386,7 @@ export function ProfilePanel({
               </button>
               <button
                 type="button"
-                onClick={handleConfirmLogout}
+                onClick={() => void handleConfirmLogout()}
                 className="btn-danger text-sm py-2 px-4"
               >
                 {t('auth.logout')}

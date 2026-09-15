@@ -19,6 +19,7 @@ import {
 import { getHeader, getHeaderAll, type SipMessage } from './message'
 import { AudioSession } from '../rtp/session'
 import { getSettings } from '../store'
+import { CallRecorder } from '../recording'
 import type { SipAccount, CallInfo, Codec } from '../../shared/types'
 
 const CODEC_MAP: Record<string, { id: number; clockRate: number; channels?: number }> = {
@@ -89,6 +90,8 @@ export class SipEngine extends EventEmitter {
   // RTP media sessions per call
   private mediaSessions = new Map<string, AudioSession>()
   private mutedCalls = new Set<string>()
+  private recorders = new Map<string, CallRecorder>()
+  private recordingPaths = new Map<string, string>()
 
   // Blind transfer (REFER) in progress
   private pendingTransfers = new Map<string, {
@@ -810,8 +813,14 @@ export class SipEngine extends EventEmitter {
 
   /** PCM Int16LE @ 8kHz from renderer mic → RTP */
   sendPcmAudio(callId: string, pcm: Buffer): void {
-    if (this.mutedCalls.has(callId)) return
+    const recorder = this.recorders.get(callId)
     const call = this.activeCalls.get(callId)
+    const mutedOrHold = this.mutedCalls.has(callId) || !!call?.isOnHold
+    if (recorder) {
+      if (mutedOrHold) recorder.writeLocalSilence(pcm.length)
+      else recorder.writeLocal(pcm)
+    }
+    if (this.mutedCalls.has(callId)) return
     if (call?.isOnHold) return
     const session = this.mediaSessions.get(callId)
     if (!session) return
@@ -842,6 +851,8 @@ export class SipEngine extends EventEmitter {
     let result: 'answered' | 'missed' | 'rejected' | 'no-answer' =
       forcedResult || (answered ? 'answered' : call.direction === 'inbound' ? 'missed' : 'no-answer')
 
+    const recordingPath = this.recordingPaths.get(callId)
+
     this.emitCallState(callId, 'ended')
     this.emit('call-ended', {
       callId,
@@ -853,6 +864,7 @@ export class SipEngine extends EventEmitter {
       result,
       codec: call.codec,
       timestamp: call.startTime,
+      recordingPath,
     })
 
     setTimeout(() => {
@@ -863,6 +875,7 @@ export class SipEngine extends EventEmitter {
       this.inboundOk.delete(callId)
       this.inboundRinging.delete(callId)
       this.inboundDialog.delete(callId)
+      this.recordingPaths.delete(callId)
     }, 2000)
   }
 
@@ -955,7 +968,7 @@ export class SipEngine extends EventEmitter {
   }
 
   private async startMedia(callId: string, call: CallInfo): Promise<void> {
-    this.stopMedia(callId)
+    this.stopMedia(callId, false)
 
     if (!call.remoteRtpAddress || !call.remoteRtpPort) {
       addLog('error', `Cannot start media for ${callId}: missing remote RTP address`)
@@ -973,6 +986,8 @@ export class SipEngine extends EventEmitter {
     })
 
     session.on('audio', (pcm: Buffer) => {
+      const recorder = this.recorders.get(callId)
+      if (recorder) recorder.writeRemote(pcm)
       this.emit('audio-out', { callId, pcm })
     })
 
@@ -988,13 +1003,50 @@ export class SipEngine extends EventEmitter {
         call.localRtpPort = bound
       }
       this.mediaSessions.set(callId, session)
+      this.maybeStartRecording(callId, call)
       addLog('info', `RTP started ${this.localIp}:${call.localRtpPort} ↔ ${call.remoteRtpAddress}:${call.remoteRtpPort} (${codec})`)
     } catch (err: any) {
       addLog('error', `RTP bind failed on ${this.localIp}:${call.localRtpPort}: ${err.message}`)
     }
   }
 
-  private stopMedia(callId: string): void {
+  private maybeStartRecording(callId: string, call: CallInfo): void {
+    if (this.recorders.has(callId)) return
+    const settings = getSettings()
+    if (!settings.autoRecordCalls) return
+    try {
+      const recorder = new CallRecorder(
+        callId,
+        call.direction,
+        call.remoteNumber,
+        !!settings.recordingStereo
+      )
+      this.recorders.set(callId, recorder)
+      call.isRecording = true
+      addLog('info', `Recording started for ${callId} → ${recorder.filePath}`)
+      this.emitCallState(callId, call.state)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err)
+      addLog('error', `Failed to start recording for ${callId}: ${message}`)
+    }
+  }
+
+  private stopRecording(callId: string): string | null {
+    const recorder = this.recorders.get(callId)
+    if (!recorder) return this.recordingPaths.get(callId) || null
+    this.recorders.delete(callId)
+    const filePath = recorder.finalize()
+    const call = this.activeCalls.get(callId)
+    if (call) call.isRecording = false
+    if (filePath) {
+      this.recordingPaths.set(callId, filePath)
+      addLog('info', `Recording saved for ${callId} → ${filePath}`)
+    }
+    return filePath
+  }
+
+  private stopMedia(callId: string, finalizeRecording = true): void {
+    if (finalizeRecording) this.stopRecording(callId)
     const session = this.mediaSessions.get(callId)
     if (session) {
       session.stop()

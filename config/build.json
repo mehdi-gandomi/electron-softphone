@@ -29,13 +29,14 @@
     ]
   },
   "socketServer": {
-    "enabled": false,
-    "host": "127.0.0.1",
+    "enabled": true,
+    "host": "0.0.0.0",
     "port": 3920,
     "authToken": ""
   },
   "auth": {
     "enabled": true,
+    "sessionCheckEnabled": false,
     "mockUser": {
       "nationalCode": "0012345678",
       "password": "1234",

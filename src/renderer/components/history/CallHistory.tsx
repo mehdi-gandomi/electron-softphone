@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState, type MouseEvent } from 'react'
 import { useHistoryStore } from '../../stores/historyStore'
 import { useI18n } from '../../lib/i18n'
 import { formatDate, formatDuration } from '../../lib/utils'
@@ -9,10 +9,57 @@ export function CallHistory() {
   const { t } = useI18n()
   const { records, getFiltered, clearAll } = useHistoryStore()
   const [filter, setFilter] = useState<Filter>('all')
+  const [playingId, setPlayingId] = useState<string | null>(null)
+  const [statusMsg, setStatusMsg] = useState('')
+  const audioRef = useRef<HTMLAudioElement | null>(null)
   const filtered = getFiltered(filter)
+
+  const stopPlayback = () => {
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current = null
+    }
+    setPlayingId(null)
+  }
 
   const handleCall = (number: string) => {
     window.api.sip.makeCall(number)
+  }
+
+  const handlePlayRecording = async (recordId: string, recordingPath: string, e: MouseEvent) => {
+    e.stopPropagation()
+    stopPlayback()
+    const data = await window.api.recording.readDataUrl(recordingPath)
+    if (!data.success || !data.dataUrl) {
+      setStatusMsg(data.error || t('history.recordingMissing'))
+      setTimeout(() => setStatusMsg(''), 2500)
+      return
+    }
+    const audio = new Audio(data.dataUrl)
+    audioRef.current = audio
+    setPlayingId(recordId)
+    setStatusMsg(t('history.playingRecording'))
+    audio.onended = () => {
+      setPlayingId(null)
+      setStatusMsg('')
+      audioRef.current = null
+    }
+    try {
+      await audio.play()
+    } catch {
+      setPlayingId(null)
+      setStatusMsg(t('history.recordingMissing'))
+      setTimeout(() => setStatusMsg(''), 2500)
+    }
+  }
+
+  const handleRevealRecording = async (recordingPath: string, e: MouseEvent) => {
+    e.stopPropagation()
+    const result = await window.api.recording.revealFile(recordingPath)
+    if (!result.success) {
+      setStatusMsg(result.error || t('history.recordingMissing'))
+      setTimeout(() => setStatusMsg(''), 2500)
+    }
   }
 
   const resultIcon = (result: string) => {
@@ -54,14 +101,27 @@ export function CallHistory() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between gap-2 mb-4">
         <h1 className="text-lg font-semibold text-text">{t('history.title')}</h1>
-        {records.length > 0 && (
-          <button onClick={clearAll} className="text-xs text-text-muted hover:text-error transition-colors">
-            {t('history.clearAll')}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            type="button"
+            onClick={() => window.api.recording.openFolder()}
+            className="text-xs text-text-muted hover:text-accent transition-colors"
+          >
+            {t('history.openRecordings')}
           </button>
-        )}
+          {records.length > 0 && (
+            <button onClick={clearAll} className="text-xs text-text-muted hover:text-error transition-colors">
+              {t('history.clearAll')}
+            </button>
+          )}
+        </div>
       </div>
+
+      {statusMsg && (
+        <p className="text-[11px] text-text-muted mb-2">{statusMsg}</p>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 mb-4 p-1 bg-bg-surface rounded-xl">
@@ -117,8 +177,31 @@ export function CallHistory() {
                       {t('history.missedBadge')}
                     </span>
                   )}
+                  {record.recordingPath && (
+                    <span className="px-1.5 py-0.5 rounded-full bg-accent/15 text-accent text-[9px] font-bold flex-shrink-0">
+                      {t('history.recording')}
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-text-secondary font-mono truncate" dir="ltr">{record.number}</p>
+                {record.recordingPath && (
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <button
+                      type="button"
+                      className="text-[10px] text-accent hover:underline"
+                      onClick={(e) => handlePlayRecording(record.id, record.recordingPath!, e)}
+                    >
+                      {playingId === record.id ? t('history.playingRecording') : t('history.playRecording')}
+                    </button>
+                    <button
+                      type="button"
+                      className="text-[10px] text-text-muted hover:text-text"
+                      onClick={(e) => handleRevealRecording(record.recordingPath!, e)}
+                    >
+                      {t('history.showRecording')}
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="text-end flex-shrink-0">
                 <p className="text-xs text-text-muted">{formatDate(record.timestamp)}</p>

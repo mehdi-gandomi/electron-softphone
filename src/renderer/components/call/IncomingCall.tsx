@@ -2,6 +2,7 @@ import { useEffect, useCallback, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { useCallStore } from '../../stores/callStore'
 import { useI18n } from '../../lib/i18n'
+import { applyOutputSink, normalizeDeviceId } from '../../lib/audioDevices'
 
 export function IncomingCall() {
   const { t, isRtl } = useI18n()
@@ -32,9 +33,11 @@ export function IncomingCall() {
     }
   }, [])
 
-  const startClassicBeep = useCallback((volume: number) => {
+  const startClassicBeep = useCallback(async (volume: number, outputDevice = '') => {
     const ctx = new AudioContext()
     ringCtxRef.current = ctx
+    await applyOutputSink(ctx, outputDevice)
+    if (ringCtxRef.current !== ctx) return
     const gainLevel = Math.max(0.05, Math.min(1, volume)) * 0.2
 
     const beep = () => {
@@ -72,17 +75,18 @@ export function IncomingCall() {
     ringTimerRef.current = setInterval(beep, 2000)
   }, [])
 
-  const startFileRingtone = useCallback(async (dataUrl: string, volume: number) => {
+  const startFileRingtone = useCallback(async (dataUrl: string, volume: number, outputDevice = '') => {
     const audio = new Audio(dataUrl)
     audio.loop = true
     audio.volume = Math.max(0, Math.min(1, volume))
     audioRef.current = audio
     try {
+      await applyOutputSink(audio, outputDevice)
       await audio.play()
     } catch {
       // Autoplay / decode failure — fall back to classic
       stopRingtone()
-      startClassicBeep(volume)
+      await startClassicBeep(volume, outputDevice)
     }
   }, [startClassicBeep, stopRingtone])
 
@@ -93,30 +97,32 @@ export function IncomingCall() {
         ringtonePreset?: string
         ringtonePath?: string
         ringtoneVolume?: number
+        outputDevice?: string
       }
       const volume = typeof settings.ringtoneVolume === 'number' ? settings.ringtoneVolume : 0.7
       const preset = settings.ringtonePreset || 'classic'
       const customPath = settings.ringtonePath || ''
+      const outputDevice = normalizeDeviceId(settings.outputDevice)
 
       if (preset === 'classic') {
-        startClassicBeep(volume)
+        await startClassicBeep(volume, outputDevice)
         return
       }
 
       const filePath = await window.api.ringtone.resolve(preset, customPath)
       if (!filePath) {
-        startClassicBeep(volume)
+        await startClassicBeep(volume, outputDevice)
         return
       }
 
       const result = await window.api.ringtone.readDataUrl(filePath)
       if (!result.success || !result.dataUrl) {
-        startClassicBeep(volume)
+        await startClassicBeep(volume, outputDevice)
         return
       }
-      await startFileRingtone(result.dataUrl, volume)
+      await startFileRingtone(result.dataUrl, volume, outputDevice)
     } catch {
-      startClassicBeep(0.7)
+      await startClassicBeep(0.7)
     }
   }, [startClassicBeep, startFileRingtone, stopRingtone])
 

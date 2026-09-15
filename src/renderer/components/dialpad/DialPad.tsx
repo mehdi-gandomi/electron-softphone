@@ -121,8 +121,8 @@ export function DialPad() {
         </div>
       </div>
 
-      {/* Dialpad */}
-      <div className="grid grid-cols-3 gap-1.5 w-full max-w-[260px] content-center">
+      {/* Dialpad — LTR grid so 1 stays top-left like a phone, even in RTL UI */}
+      <div className="grid grid-cols-3 gap-1.5 w-full max-w-[260px] content-center" dir="ltr">
         {digits.map(({ num, letters }) => (
           <button
             key={num}

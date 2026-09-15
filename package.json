@@ -1,23 +1,33 @@
 {
-  "name": "voxphone",
-  "version": "1.0.0",
+  "name": "emdadphone",
+  "version": "1.0.3",
   "description": "Modern SIP Softphone",
   "main": "./out/main/index.js",
-  "author": "VoxPhone",
+  "author": "EmdadPhone",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mehdi-gandomi/electron-softphone.git"
+  },
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
-    "package": "electron-builder --win --config electron-builder.yml",
-    "package:portable": "electron-builder --win portable --config electron-builder.yml"
+    "package": "electron-builder --win --config electron-builder.yml --publish never",
+    "package:portable": "electron-builder --win portable --config electron-builder.yml --publish never",
+    "hooks:install": "node scripts/install-git-hooks.js",
+    "version:patch": "node scripts/bump-version.js",
+    "release": "node scripts/extract-release-notes.js && npm run build && electron-builder --win nsis --config electron-builder.yml --publish always",
+    "prepare": "node scripts/install-git-hooks.js"
   },
   "dependencies": {
     "electron-store": "^8.2.0",
+    "electron-updater": "^6.8.9",
     "framer-motion": "^11.15.0",
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "selfsigned": "^5.5.0",
     "socket.io": "^4.8.1",
     "zustand": "^5.0.2"
   },

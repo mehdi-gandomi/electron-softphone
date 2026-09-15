@@ -16,28 +16,71 @@ import {
   resolveRingtonePath,
   getTodayLogPath,
 } from './ringtone'
-import { syncSocketServerFromSettings, emitIncomingCall } from './socketServer'
+import {
+  getDefaultRecordingDir,
+  pickRecordingFolder,
+  openRecordingFolder,
+  revealRecordingFile,
+  recordingToDataUrl,
+  ensureRecordingDir,
+} from './recording'
+import { postAuthLogin, postShiftInfo, getExtensionsStatus, postReserveExtension, postLogoutExtension } from './remoteApi'
+import { checkSystemClock } from './clockCheck'
+import {
+  syncSocketServerFromSettings,
+  emitIncomingCall,
+  emitCallAnswered,
+  emitCallEnded,
+  getSocketServerStatus,
+  installTlsCertificateToWindows,
+  isTlsCertificateTrusted,
+  emitNuisanceReport,
+  emitOperatorInfo,
+} from './socketServer'
+import {
+  enableFirefoxEnterpriseRoots,
+  isFirefoxEnterpriseRootsConfigured,
+  restartFirefox,
+} from './firefoxEnterpriseRoots'
+import {
+  getUpdaterStatus,
+  initUpdater,
+  checkForAppUpdate,
+  downloadAppUpdate,
+  installAppUpdate,
+  openReleasePage,
+} from './updater'
 import { getBuildDeveloperKey } from '../shared/buildConfig'
 
 let sipEngine: SipEngine | null = null
 let mainWindow: BrowserWindow | null = null
 let developerSessionUnlocked = false
 
+/** Fake calls created from Debug → Emulate (no real SIP dialog). */
+const mockCalls = new Map<string, CallInfo>()
+
 const INTEGRATION_KEYS = new Set(['apiIntegration', 'screenPop', 'socketServer'])
 
 export function initIpc(win: BrowserWindow) {
   mainWindow = win
+  initUpdater(win)
+
+  ipcMain.handle('updater:status', () => getUpdaterStatus())
+  ipcMain.handle('updater:check', () => checkForAppUpdate())
+  ipcMain.handle('updater:download', () => downloadAppUpdate())
+  ipcMain.handle('updater:install', () => installAppUpdate())
+  ipcMain.handle('updater:open-release', () => openReleasePage())
 
   // Settings
   ipcMain.handle('settings:get', () => getSettings())
 
-  ipcMain.handle('settings:set', (_e, key: string, value: unknown) => {
+  ipcMain.handle('settings:set', async (_e, key: string, value: unknown) => {
     setSetting(key as never, value as never)
     if (INTEGRATION_KEYS.has(key) && developerSessionUnlocked) {
       markDeveloperOverrides()
     }
     if (key === 'socketServer') {
-      void syncSocketServerFromSettings()
+      await syncSocketServerFromSettings()
     }
     return true
   })
@@ -193,6 +236,9 @@ export function initIpc(win: BrowserWindow) {
   })
 
   ipcMain.handle('sip:answer-call', async (_e, callId: string) => {
+    if (answerMockIncomingCall(callId)) {
+      return { success: true }
+    }
     if (!sipEngine) return { success: false, error: 'Engine not running' }
     try {
       await sipEngine.answerCall(callId)
@@ -203,6 +249,9 @@ export function initIpc(win: BrowserWindow) {
   })
 
   ipcMain.handle('sip:hangup-call', async (_e, callId: string) => {
+    if (hangupMockCall(callId)) {
+      return { success: true }
+    }
     if (!sipEngine) return { success: false }
     await sipEngine.hangupCall(callId)
     return { success: true }
@@ -301,6 +350,91 @@ export function initIpc(win: BrowserWindow) {
     return getTodayLogPath()
   })
 
+  ipcMain.handle('socket:status', () => {
+    return getSocketServerStatus()
+  })
+
+  ipcMain.handle('socket:tls-status', () => {
+    return isTlsCertificateTrusted()
+  })
+
+  ipcMain.handle('socket:install-tls-cert', () => {
+    return installTlsCertificateToWindows()
+  })
+
+  ipcMain.handle('socket:firefox-enterprise-roots-status', () => {
+    return isFirefoxEnterpriseRootsConfigured()
+  })
+
+  ipcMain.handle('socket:enable-firefox-enterprise-roots', () => {
+    return enableFirefoxEnterpriseRoots()
+  })
+
+  ipcMain.handle('socket:restart-firefox', () => {
+    return restartFirefox()
+  })
+
+  ipcMain.handle('socket:open-https-trust', async () => {
+    try {
+      const status = getSocketServerStatus()
+      await shell.openExternal(status.httpsUrl + '/')
+      return { success: true }
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : String(err),
+      }
+    }
+  })
+
+  ipcMain.handle(
+    'socket:emit-nuisance',
+    (
+      _e,
+      payload: { callId: string; nuisanceType: number; nuisanceLabel: string }
+    ) => {
+      const callId = String(payload?.callId || '')
+      const nuisanceType = Number(payload?.nuisanceType)
+      const nuisanceLabel = String(payload?.nuisanceLabel || '')
+      if (!callId || !Number.isFinite(nuisanceType) || !nuisanceLabel) {
+        return { success: false, error: 'Invalid nuisance payload' }
+      }
+      const call =
+        sipEngine?.getCall(callId) ||
+        mockCalls.get(callId) ||
+        null
+      if (!call) {
+        return { success: false, error: 'Call not found' }
+      }
+      return emitNuisanceReport(call, nuisanceType, nuisanceLabel)
+    }
+  )
+
+  ipcMain.handle('socket:emit-operator', () => {
+    return emitOperatorInfo(getSettings().userAccess)
+  })
+
+  ipcMain.handle(
+    'debug:emulate-incoming-call',
+    (
+      _e,
+      payload?: { callerId?: string; callerName?: string; issabelId?: string }
+    ) => {
+      if (!developerSessionUnlocked) {
+        return { success: false, error: 'Developer mode required' }
+      }
+      if (!mainWindow || mainWindow.isDestroyed()) {
+        return { success: false, error: 'Window not ready' }
+      }
+      const call = createMockIncomingCall(payload || {})
+      mockCalls.set(call.id, call)
+      mainWindow.webContents.send('sip:incoming-call', call)
+      sendWebhookForEvent('incoming_call', call)
+      emitIncomingCall(call)
+      return { success: true, callId: call.id }
+    }
+  )
+
   // Ringtones
   ipcMain.handle('ringtone:list', () => {
     ensureDefaultRingtones()
@@ -318,6 +452,89 @@ export function initIpc(win: BrowserWindow) {
   ipcMain.handle('ringtone:resolve', (_e, preset: string, customPath: string) => {
     return resolveRingtonePath(preset || 'classic', customPath || '')
   })
+
+  // Call recordings
+  ipcMain.handle('recording:get-default-path', () => {
+    return getDefaultRecordingDir()
+  })
+
+  ipcMain.handle('recording:get-resolved-path', () => {
+    return ensureRecordingDir()
+  })
+
+  ipcMain.handle('recording:pick-folder', async () => {
+    return pickRecordingFolder(mainWindow)
+  })
+
+  ipcMain.handle('recording:open-folder', async () => {
+    return openRecordingFolder()
+  })
+
+  ipcMain.handle('recording:reveal-file', async (_e, filePath: string) => {
+    return revealRecordingFile(String(filePath || ''))
+  })
+
+  ipcMain.handle('recording:read-data-url', (_e, filePath: string) => {
+    return recordingToDataUrl(String(filePath || ''))
+  })
+
+  // Auth / shift APIs (main-process fetch avoids renderer CORS)
+  ipcMain.handle('auth:shift-info', async (_e, nationalCode: string) => {
+    return postShiftInfo(String(nationalCode || ''))
+  })
+
+  ipcMain.handle('auth:login', async (_e, username: string, password: string) => {
+    return postAuthLogin(String(username || ''), String(password || ''))
+  })
+
+  ipcMain.handle('system:check-clock', async () => {
+    return checkSystemClock()
+  })
+
+  ipcMain.handle('system:open-date-settings', async () => {
+    try {
+      await shell.openExternal('ms-settings:dateandtime')
+      return { success: true }
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : String(err),
+      }
+    }
+  })
+
+  ipcMain.handle('extensions:status', async (_e, provinceId: number) => {
+    return getExtensionsStatus(Number(provinceId))
+  })
+
+  ipcMain.handle(
+    'extensions:reserve',
+    async (
+      _e,
+      payload: { provinceId: number; nationalCode: string; extension: string }
+    ) => {
+      return postReserveExtension({
+        provinceId: Number(payload?.provinceId),
+        nationalCode: String(payload?.nationalCode || ''),
+        extension: String(payload?.extension || ''),
+      })
+    }
+  )
+
+  ipcMain.handle(
+    'extensions:logout',
+    async (
+      _e,
+      payload: { nationalCode: string; extension: string; provinceId?: number }
+    ) => {
+      return postLogoutExtension({
+        nationalCode: String(payload?.nationalCode || ''),
+        extension: String(payload?.extension || ''),
+        provinceId:
+          typeof payload?.provinceId === 'number' ? payload.provinceId : undefined,
+      })
+    }
+  )
 
   ipcMain.handle('sip:reconnect', async () => {
     try {
@@ -362,12 +579,16 @@ function setupSipCallbacks(engine: SipEngine, win: BrowserWindow) {
       const call = engine?.getCall(data.callId)
       if (call) {
         sendWebhookForEvent('call_answered', call)
+        emitCallAnswered(call)
         openScreenPop(call)
       }
     }
     if (data.state === 'ended') {
       const call = engine?.getCall(data.callId)
-      if (call) sendWebhookForEvent('call_ended', call)
+      if (call) {
+        sendWebhookForEvent('call_ended', call)
+        emitCallEnded(call)
+      }
     }
   })
 
@@ -534,6 +755,93 @@ function sendWebhook(url: string, data: Record<string, unknown>, apiKey?: string
   })
 }
 
+function createMockIncomingCall(input: {
+  callerId?: string
+  callerName?: string
+  issabelId?: string
+}): CallInfo {
+  const account = getActiveAccount()
+  const now = Date.now()
+  const id = `mock-${now}`
+  const callerId = String(input.callerId || '09121234567').trim() || '09121234567'
+  return {
+    id,
+    state: 'incoming',
+    direction: 'inbound',
+    remoteNumber: callerId,
+    remoteName: String(input.callerName || 'Caller').trim() || 'Caller',
+    localNumber: account?.username || account?.displayName || 'ext',
+    issabelId: String(input.issabelId || `mock-issabel-${now}`).trim(),
+    startTime: now,
+    answerTime: 0,
+    endTime: 0,
+    duration: 0,
+    isMuted: false,
+    isOnHold: false,
+    isRecording: false,
+    codec: 'PCMU',
+    remoteRtpPort: 0,
+    remoteRtpAddress: '',
+    localRtpPort: 0,
+    callId: id,
+    fromTag: 'mock-from',
+    toTag: 'mock-to',
+  }
+}
+
+function answerMockIncomingCall(callId: string): boolean {
+  const call = mockCalls.get(callId)
+  if (!call || !mainWindow || mainWindow.isDestroyed()) return false
+
+  call.state = 'active'
+  call.answerTime = Date.now()
+  mockCalls.set(callId, call)
+
+  mainWindow.webContents.send('sip:call-state', {
+    callId,
+    state: 'active',
+    answerTime: call.answerTime,
+    isMuted: false,
+    isOnHold: false,
+    duration: 0,
+    call: { ...call },
+  })
+  sendWebhookForEvent('call_answered', call)
+  emitCallAnswered(call)
+  openScreenPop(call)
+  return true
+}
+
+function hangupMockCall(callId: string): boolean {
+  const call = mockCalls.get(callId)
+  if (!call || !mainWindow || mainWindow.isDestroyed()) return false
+
+  call.state = 'ended'
+  call.endTime = Date.now()
+  if (call.answerTime > 0) {
+    call.duration = Math.max(0, Math.floor((call.endTime - call.answerTime) / 1000))
+  }
+  mockCalls.delete(callId)
+
+  sendWebhookForEvent(
+    call.answerTime > 0 ? 'call_ended' : 'call_missed',
+    call
+  )
+  emitCallEnded(call)
+  mainWindow.webContents.send('sip:call-state', {
+    callId,
+    state: 'ended',
+    duration: call.duration,
+    call: { ...call },
+  })
+  mainWindow.webContents.send('sip:call-ended', {
+    callId,
+    duration: call.duration,
+    result: call.answerTime > 0 ? 'answered' : 'rejected',
+  })
+  return true
+}
+
 /** Graceful SIP teardown (used on Quit). */
 export async function stopSipEngine(): Promise<void> {
   if (!sipEngine) return
@@ -542,4 +850,5 @@ export async function stopSipEngine(): Promise<void> {
   } catch {}
   sipEngine = null
 }
+
 

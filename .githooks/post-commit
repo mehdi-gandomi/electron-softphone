@@ -1,0 +1,6 @@
+#!/bin/sh
+# Source copy — npm prepare copies this into .git/hooks/post-commit
+root="$(git rev-parse --show-toplevel)"
+if [ -f "$root/scripts/bump-version.js" ]; then
+  node "$root/scripts/bump-version.js" --after-commit
+fi

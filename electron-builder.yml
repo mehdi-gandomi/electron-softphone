@@ -1,12 +1,14 @@
-appId: com.voxphone.app
-productName: VoxPhone
+appId: com.emdadphone.app
+productName: EmdadPhone
 directories:
   buildResources: resources
 files:
   - '!**/.vscode/*'
   - '!src/*'
+  - '!scripts/**'
+  - '!.githooks/**'
   - '!electron.vite.config.*'
-  - '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+  - '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md,RELEASE.md,release-notes.md}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
 extraResources:
   - from: resources/logo.png
@@ -15,16 +17,25 @@ extraResources:
     to: icon.png
 win:
   icon: resources/icon.png
-  executableName: VoxPhone
+  executableName: EmdadPhone
   target:
     - target: nsis
       arch: [x64]
     - target: portable
       arch: [x64]
+publish:
+  provider: github
+  owner: mehdi-gandomi
+  repo: electron-softphone
+  releaseType: release
+releaseInfo:
+  releaseNotesFile: release-notes.md
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
+  oneClick: false
+  allowToChangeInstallationDirectory: true
 portable:
   artifactName: ${name}-${version}-portable.${ext}

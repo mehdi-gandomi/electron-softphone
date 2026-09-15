@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useSipStore } from '../../stores/sipStore'
 import { useI18n } from '../../lib/i18n'
 
@@ -45,7 +45,11 @@ export function DebugLog() {
   const [copyDone, setCopyDone] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
   const [logFilePath, setLogFilePath] = useState('')
-  const logEndRef = useRef<HTMLDivElement>(null)
+  const [emulateCallerId, setEmulateCallerId] = useState('09121234567')
+  const [emulateCallerName, setEmulateCallerName] = useState('Caller')
+  const [emulateIssabelId, setEmulateIssabelId] = useState('')
+  const [emulateMsg, setEmulateMsg] = useState('')
+  const [emulating, setEmulating] = useState(false)
   const sipStatus = useSipStore((s) => s.status)
   const sipError = useSipStore((s) => s.errorMessage)
 
@@ -64,12 +68,6 @@ export function DebugLog() {
     return () => clearInterval(interval)
   }, [autoRefresh])
 
-  useEffect(() => {
-    if (autoRefresh && logEndRef.current) {
-      logEndRef.current.scrollIntoView({ behavior: 'smooth' })
-    }
-  }, [logs, autoRefresh])
-
   const filtered = filter === 'all' ? logs : logs.filter((l) => l.direction === filter)
   const errorCount = logs.filter((l) => l.direction === 'error').length
 
@@ -80,6 +78,28 @@ export function DebugLog() {
       case 'error': return 'text-error'
       case 'info': return 'text-warning'
       default: return 'text-text-muted'
+    }
+  }
+
+  const handleEmulateIncoming = async () => {
+    setEmulating(true)
+    setEmulateMsg('')
+    try {
+      const result = await window.api.debug.emulateIncomingCall({
+        callerId: emulateCallerId,
+        callerName: emulateCallerName,
+        issabelId: emulateIssabelId || undefined,
+      })
+      if (result.success) {
+        setEmulateMsg(t('debug.emulateOk', { id: result.callId || '' }))
+      } else {
+        setEmulateMsg(result.error || t('debug.emulateFailed'))
+      }
+    } catch (err) {
+      setEmulateMsg(err instanceof Error ? err.message : t('debug.emulateFailed'))
+    } finally {
+      setEmulating(false)
+      setTimeout(() => setEmulateMsg(''), 4000)
     }
   }
 
@@ -175,6 +195,58 @@ export function DebugLog() {
         </div>
       )}
 
+      <div className="mb-3 rounded-xl border border-border bg-bg-surface p-3 space-y-2">
+        <div>
+          <h2 className="text-sm font-semibold text-text">{t('debug.emulateTitle')}</h2>
+          <p className="text-[11px] text-text-muted mt-0.5">{t('debug.emulateHelp')}</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div>
+            <label className="block text-[10px] text-text-muted mb-1">{t('debug.emulateCallerId')}</label>
+            <input
+              type="text"
+              value={emulateCallerId}
+              onChange={(e) => setEmulateCallerId(e.target.value)}
+              className="input-field text-xs font-mono py-1.5"
+              dir="ltr"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] text-text-muted mb-1">{t('debug.emulateCallerName')}</label>
+            <input
+              type="text"
+              value={emulateCallerName}
+              onChange={(e) => setEmulateCallerName(e.target.value)}
+              className="input-field text-xs py-1.5"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] text-text-muted mb-1">{t('debug.emulateIssabelId')}</label>
+            <input
+              type="text"
+              value={emulateIssabelId}
+              onChange={(e) => setEmulateIssabelId(e.target.value)}
+              className="input-field text-xs font-mono py-1.5"
+              dir="ltr"
+              placeholder="optional"
+            />
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={emulating}
+            onClick={() => void handleEmulateIncoming()}
+            className="btn-primary text-xs py-1.5 px-3"
+          >
+            {emulating ? t('debug.emulating') : t('debug.emulateIncoming')}
+          </button>
+          {emulateMsg && (
+            <span className="text-[11px] text-text-secondary break-all">{emulateMsg}</span>
+          )}
+        </div>
+      </div>
+
       <div className={`mb-3 px-3 py-2 rounded-xl border text-xs ${
         sipStatus === 'registered' ? 'bg-success/10 border-success/30 text-success' :
         sipStatus === 'connecting' ? 'bg-warning/10 border-warning/30 text-warning' :
@@ -239,7 +311,6 @@ export function DebugLog() {
                 <span className="text-text break-all">{log.message}</span>
               </div>
             ))}
-            <div ref={logEndRef} />
           </>
         )}
       </div>

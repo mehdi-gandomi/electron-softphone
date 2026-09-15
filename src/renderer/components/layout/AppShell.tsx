@@ -7,9 +7,19 @@ interface AppShellProps {
   children: ReactNode
   page: string
   onNavigate: (page: string) => void
+  canChangeExtension?: boolean
+  onOpenExtensionPicker?: () => void
+  extensionPickerBlockedReason?: string | null
 }
 
-export function AppShell({ children, page, onNavigate }: AppShellProps) {
+export function AppShell({
+  children,
+  page,
+  onNavigate,
+  canChangeExtension = false,
+  onOpenExtensionPicker,
+  extensionPickerBlockedReason = null,
+}: AppShellProps) {
   return (
     <div className="flex flex-col h-full bg-bg">
       <WindowHeader />
@@ -21,7 +31,11 @@ export function AppShell({ children, page, onNavigate }: AppShellProps) {
         </main>
       </div>
 
-      <BottomStatusBar />
+      <BottomStatusBar
+        canChangeExtension={canChangeExtension}
+        onOpenExtensionPicker={onOpenExtensionPicker}
+        extensionPickerBlockedReason={extensionPickerBlockedReason}
+      />
     </div>
   )
 }

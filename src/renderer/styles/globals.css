@@ -258,16 +258,19 @@
   }
 
   .title-bar {
-    @apply flex items-center justify-between px-3 py-2.5 bg-bg-surface border-b border-border select-none;
+    @apply flex items-center justify-between px-3 py-2.5 select-none;
+    background: rgb(var(--c-primary));
+    border-bottom: 1px solid rgb(var(--c-primary-active));
     -webkit-app-region: drag;
   }
 
   .title-bar-btn {
-    @apply w-7 h-7 flex items-center justify-center rounded-lg transition-colors duration-150;
+    @apply w-7 h-7 flex items-center justify-center rounded-lg transition-colors duration-150 text-white/90;
     -webkit-app-region: no-drag;
   }
   .title-bar-btn:hover {
-    background: var(--overlay-2);
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
   }
 
   .dial-key {

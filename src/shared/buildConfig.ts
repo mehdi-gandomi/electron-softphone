@@ -18,6 +18,7 @@ export interface BuildConfig {
 
 export interface AuthBuildConfig {
   enabled: boolean
+  sessionCheckEnabled: boolean
   mockUser: UserProfile & {
     password: string
   }
@@ -57,7 +58,10 @@ export function getBuildIntegrationDefaults(): Pick<
 }
 
 export function getBuildAuthConfig(): AuthBuildConfig {
-  return structuredClone(buildConfig.auth)
+  return {
+    ...structuredClone(buildConfig.auth),
+    sessionCheckEnabled: buildConfig.auth.sessionCheckEnabled ?? true,
+  }
 }
 
 export function getBuildMockExtensions(): ExtensionInfo[] {

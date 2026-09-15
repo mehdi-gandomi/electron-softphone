@@ -16,10 +16,10 @@ export function WindowHeader() {
       >
         <CrescentLogo size={32} />
         <div className="min-w-0 text-start">
-          <div className="text-[15px] font-bold text-text leading-tight tracking-tight">
+          <div className="text-[15px] font-bold text-white leading-tight tracking-tight">
             {t('shell.brand')}
           </div>
-          <div className="text-[11px] text-text-muted truncate leading-tight">
+          <div className="text-[11px] text-white/80 truncate leading-tight">
             {t('shell.tagline')}
           </div>
         </div>
@@ -31,27 +31,27 @@ export function WindowHeader() {
       >
         <button
           onClick={toggleTheme}
-          className="title-bar-btn text-text-secondary"
+          className="title-bar-btn"
           title={theme === 'dark' ? t('shell.themeLight') : t('shell.themeDark')}
         >
           {theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}
         </button>
         <button
           onClick={() => window.api.window.toggleAlwaysOnTop()}
-          className="title-bar-btn text-text-secondary"
+          className="title-bar-btn"
           title={t('shell.alwaysOnTop')}
         >
           <Pin size={12} />
         </button>
         <button
           onClick={() => window.api.window.minimize()}
-          className="title-bar-btn text-text-secondary"
+          className="title-bar-btn"
         >
           <Minus size={13} />
         </button>
         <button
           onClick={() => window.api.window.close()}
-          className="title-bar-btn text-text-secondary hover:text-error"
+          className="title-bar-btn hover:!bg-black/20"
         >
           <X size={13} />
         </button>

@@ -2,7 +2,12 @@ import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react'
 import { useCallStore } from '../../stores/callStore'
 import { useI18n } from '../../lib/i18n'
 import { formatDuration } from '../../lib/utils'
-import type { CallInfo } from '../../../shared/types'
+import {
+  NuisanceType,
+  NUISANCE_TYPE_IDS,
+  type CallInfo,
+  type NuisanceTypeId,
+} from '../../../shared/types'
 
 export function ActiveCall() {
   const calls = useCallStore((s) => s.calls)
@@ -22,7 +27,13 @@ function ActiveCallPanel({ call }: { call: CallInfo }) {
   const [transferTarget, setTransferTarget] = useState('')
   const [showTransfer, setShowTransfer] = useState(false)
   const [transferStatus, setTransferStatus] = useState<string | null>(null)
+  const [showNuisance, setShowNuisance] = useState(false)
+  const [nuisanceType, setNuisanceType] = useState<NuisanceTypeId>(NuisanceType.SILENCE)
+  const [nuisanceBusy, setNuisanceBusy] = useState(false)
+  const [nuisanceMsg, setNuisanceMsg] = useState('')
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const answered = call.state === 'active' || call.state === 'holding'
 
   useEffect(() => {
     const onTransfer = (...args: unknown[]) => {
@@ -65,6 +76,14 @@ function ActiveCallPanel({ call }: { call: CallInfo }) {
     }
   }, [call.state, call.answerTime, call.startTime])
 
+  useEffect(() => {
+    if (!answered) {
+      setShowNuisance(false)
+      setNuisanceMsg('')
+      setNuisanceType(NuisanceType.SILENCE)
+    }
+  }, [answered])
+
   const handleMute = useCallback(() => {
     window.api.sip.muteCall(call.id, !call.isMuted)
   }, [call.id, call.isMuted])
@@ -93,6 +112,33 @@ function ActiveCallPanel({ call }: { call: CallInfo }) {
       setTransferTarget('')
     }
   }, [call.id, transferTarget, t])
+
+  const handleNuisanceSubmit = useCallback(async () => {
+    setNuisanceBusy(true)
+    setNuisanceMsg('')
+    try {
+      const label = t(`call.nuisance.type.${nuisanceType}`)
+      const result = await window.api.socket.emitNuisance({
+        callId: call.id,
+        nuisanceType,
+        nuisanceLabel: label,
+      })
+      if (result.success) {
+        setNuisanceMsg(t('call.nuisance.sent'))
+        // End the call after the report is emitted (emit needs an active call id).
+        window.api.sip.hangupCall(call.id)
+        setShowNuisance(false)
+        setNuisanceMsg('')
+        setNuisanceType(NuisanceType.SILENCE)
+      } else {
+        setNuisanceMsg(result.error || t('call.nuisance.failed'))
+      }
+    } catch (err) {
+      setNuisanceMsg(err instanceof Error ? err.message : t('call.nuisance.failed'))
+    } finally {
+      setNuisanceBusy(false)
+    }
+  }, [call.id, nuisanceType, t])
 
   const stateLabel =
     transferStatus ? transferStatus :
@@ -130,7 +176,7 @@ function ActiveCallPanel({ call }: { call: CallInfo }) {
 
         {showDtmf && (
           <div className="mb-5 p-3 bg-bg rounded-xl animate-slide-up border border-border">
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-4 gap-2" dir="ltr">
               {['1','2','3','4','5','6','7','8','9','*','0','#'].map((d) => (
                 <button
                   key={d}
@@ -162,7 +208,55 @@ function ActiveCallPanel({ call }: { call: CallInfo }) {
           </div>
         )}
 
-        <div className="grid grid-cols-4 gap-2 mb-5">
+        {showNuisance && answered && (
+          <div className="mb-5 p-3 bg-bg rounded-xl animate-slide-up border border-border space-y-3">
+            <p className="text-xs text-text-secondary font-medium">{t('call.nuisance.pick')}</p>
+            <div className="grid grid-cols-2 gap-2">
+              {NUISANCE_TYPE_IDS.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setNuisanceType(id)}
+                  className={`flex items-center gap-2 rounded-xl border px-2.5 py-2 text-start transition-all ${
+                    nuisanceType === id
+                      ? 'border-accent bg-accent/15 text-accent'
+                      : 'border-border bg-bg-surface-2 text-text-secondary hover:border-border-hover'
+                  }`}
+                >
+                  <span className="flex-shrink-0">{nuisanceIcon(id)}</span>
+                  <span className="text-[11px] font-medium leading-snug">{t(`call.nuisance.type.${id}`)}</span>
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => void handleNuisanceSubmit()}
+                disabled={nuisanceBusy}
+                className="btn-primary text-sm flex-1 disabled:opacity-50"
+              >
+                {nuisanceBusy ? t('call.nuisance.sending') : t('call.nuisance.submit')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowNuisance(false)
+                  setNuisanceMsg('')
+                }}
+                className="btn-ghost text-sm"
+              >
+                {t('call.cancel')}
+              </button>
+            </div>
+            {nuisanceMsg ? (
+              <p className={`text-[11px] ${nuisanceMsg === t('call.nuisance.sent') ? 'text-success' : 'text-error'}`}>
+                {nuisanceMsg}
+              </p>
+            ) : null}
+          </div>
+        )}
+
+        <div className={`grid gap-2 mb-5 ${answered ? 'grid-cols-5' : 'grid-cols-4'}`}>
           <ControlButton
             active={call.isMuted}
             onClick={handleMute}
@@ -199,7 +293,11 @@ function ActiveCallPanel({ call }: { call: CallInfo }) {
           />
           <ControlButton
             active={showDtmf}
-            onClick={() => setShowDtmf(!showDtmf)}
+            onClick={() => {
+              setShowDtmf(!showDtmf)
+              setShowTransfer(false)
+              setShowNuisance(false)
+            }}
             label={t('call.keypad')}
             icon={
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -218,6 +316,8 @@ function ActiveCallPanel({ call }: { call: CallInfo }) {
             onClick={() => {
               if (transferStatus && !transferStatus.toLowerCase().includes('fail') && !transferStatus.includes('ناموفق')) return
               setShowTransfer(!showTransfer)
+              setShowDtmf(false)
+              setShowNuisance(false)
             }}
             label={t('call.transfer')}
             icon={
@@ -229,6 +329,29 @@ function ActiveCallPanel({ call }: { call: CallInfo }) {
               </svg>
             }
           />
+          {answered && (
+            <ControlButton
+              active={showNuisance}
+              onClick={() => {
+                setShowNuisance(!showNuisance)
+                setShowDtmf(false)
+                setShowTransfer(false)
+                setNuisanceMsg('')
+                if (!showNuisance) setNuisanceType(NuisanceType.SILENCE)
+              }}
+              label={t('call.nuisance')}
+              icon={
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6"/>
+                  <path d="M5 5a16 16 0 0 0 1.11 11.05"/>
+                  <path d="M18.92 7.2A16 16 0 0 1 20.5 12"/>
+                  <path d="M15 5.5A7 7 0 0 1 18 12"/>
+                  <circle cx="12" cy="12" r="2"/>
+                  <line x1="2" y1="2" x2="22" y2="22"/>
+                </svg>
+              }
+            />
+          )}
         </div>
 
         <button
@@ -244,6 +367,49 @@ function ActiveCallPanel({ call }: { call: CallInfo }) {
       </div>
     </div>
   )
+}
+
+function nuisanceIcon(id: NuisanceTypeId): ReactNode {
+  const common = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 } as const
+  switch (id) {
+    case NuisanceType.INSULT:
+      return (
+        <svg {...common}>
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          <line x1="9" y1="9" x2="15" y2="15"/>
+          <line x1="15" y1="9" x2="9" y2="15"/>
+        </svg>
+      )
+    case NuisanceType.ENTERTAINMENT:
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+          <line x1="9" y1="9" x2="9.01" y2="9"/>
+          <line x1="15" y1="9" x2="15.01" y2="9"/>
+        </svg>
+      )
+    case NuisanceType.SILENCE:
+      return (
+        <svg {...common}>
+          <line x1="1" y1="1" x2="23" y2="23"/>
+          <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/>
+          <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/>
+          <line x1="12" y1="19" x2="12" y2="23"/>
+          <line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>
+      )
+    case NuisanceType.EMERGENCY_TEST:
+      return (
+        <svg {...common}>
+          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.34 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+          <path d="M14.05 2a9 9 0 0 1 8 7.94"/>
+          <path d="M14.05 6A5 5 0 0 1 18 10"/>
+        </svg>
+      )
+    default:
+      return null
+  }
 }
 
 function ControlButton({ active, onClick, label, icon }: {

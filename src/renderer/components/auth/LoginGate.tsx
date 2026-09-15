@@ -5,7 +5,9 @@ import {
   logoutOtherSession,
   qualifyNationalCode,
 } from '../../lib/mockAuth'
-import type { UserProfile } from '../../../shared/types'
+import { formatJalaliDateLong } from '../../lib/persianDate'
+import { nationalCodesEqual } from '../../../shared/nationalCode'
+import type { LatestShiftLookup, UserProfile } from '../../../shared/types'
 
 interface LoginGateProps {
   allowSkip?: boolean
@@ -26,6 +28,10 @@ export function LoginGate({
   const [qualifying, setQualifying] = useState(false)
   const [loggingIn, setLoggingIn] = useState(false)
   const [resolvingConflict, setResolvingConflict] = useState(false)
+  const [hasShift, setHasShift] = useState<boolean | null>(null)
+  const [isOnShift, setIsOnShift] = useState<boolean | null>(null)
+  const [outsideShift, setOutsideShift] = useState(false)
+  const [shiftWindow, setShiftWindow] = useState<{ start?: string; end?: string } | null>(null)
   const [conflict, setConflict] = useState<{
     pcName: string
     ipAddress: string
@@ -36,16 +42,31 @@ export function LoginGate({
   const handleQualify = async () => {
     setError('')
     setQualifiedProfile(null)
+    setHasShift(null)
+    setIsOnShift(null)
+    setOutsideShift(false)
+    setShiftWindow(null)
     setPassword('')
     setConflict(null)
     setQualifying(true)
     try {
       const result = await qualifyNationalCode(nationalCode)
       if (!result.success || !result.profile) {
-        setError(t('auth.invalidNationalCode'))
+        await window.api.settings.set('latestShiftLookup', null)
+        setError(result.error || t('auth.invalidNationalCode'))
         return
       }
+      await window.api.settings.set('latestShiftLookup', {
+        nationalCode: result.profile.nationalCode,
+        hasShift: result.hasShift === true,
+        isOnShift: result.isOnShift === true,
+        profile: result.profile,
+        shifts: result.shifts || [],
+        fetchedAt: new Date().toISOString(),
+      })
       setQualifiedProfile(result.profile)
+      setHasShift(result.hasShift === true)
+      setIsOnShift(result.isOnShift === true)
     } finally {
       setQualifying(false)
     }
@@ -54,6 +75,8 @@ export function LoginGate({
   const handleLogin = async () => {
     setError('')
     setConflict(null)
+    setOutsideShift(false)
+    setShiftWindow(null)
     setLoggingIn(true)
     try {
       const result = await loginWithPassword(nationalCode, password)
@@ -61,13 +84,53 @@ export function LoginGate({
         setConflict(result.conflict)
         return
       }
-      if (!result.success || !result.profile) {
-        setError(
-          result.error === 'invalid_national_code'
-            ? t('auth.invalidNationalCode')
-            : t('auth.invalidPassword')
-        )
+      if (result.errorCode === 'OUTSIDE_SHIFT_HOURS') {
+        if (result.profile) setQualifiedProfile(result.profile)
+        setOutsideShift(true)
+        setHasShift(true)
+        setIsOnShift(false)
+        setShiftWindow({
+          start: result.shiftAccess?.shiftStart,
+          end: result.shiftAccess?.shiftEnd,
+        })
+        setError(result.error || t('auth.outsideShift'))
         return
+      }
+      if (!result.success || !result.profile || !result.session) {
+        setError(result.error || t('auth.invalidPassword'))
+        return
+      }
+      await window.api.settings.set('authSession', result.session)
+      if (result.profile) {
+        const current = (await window.api.settings.get()) as {
+          latestShiftLookup?: LatestShiftLookup | null
+        }
+        const previous = current.latestShiftLookup
+        const sameUser = nationalCodesEqual(
+          previous?.nationalCode,
+          result.profile.nationalCode
+        )
+        await window.api.settings.set('latestShiftLookup', {
+          nationalCode: result.profile.nationalCode,
+          hasShift:
+            typeof result.hasShift === 'boolean'
+              ? result.hasShift
+              : sameUser
+                ? previous?.hasShift === true
+                : false,
+          isOnShift:
+            result.shiftAccess?.isWithinShift === true ||
+            result.hasShift === false ||
+            (sameUser ? previous?.isOnShift === true : false),
+          profile: result.profile,
+          shifts:
+            result.shifts && result.shifts.length > 0
+              ? result.shifts
+              : sameUser && previous?.shifts?.length
+                ? previous.shifts
+                : [],
+          fetchedAt: new Date().toISOString(),
+        })
       }
       onLoginSuccess(result.profile)
     } finally {
@@ -81,9 +144,53 @@ export function LoginGate({
       await logoutOtherSession(nationalCode)
       setConflict(null)
       const result = await loginWithPassword(nationalCode, password)
-      if (!result.success || !result.profile) {
-        setError(t('auth.retryLoginFailed'))
+      if (result.errorCode === 'OUTSIDE_SHIFT_HOURS') {
+        if (result.profile) setQualifiedProfile(result.profile)
+        setOutsideShift(true)
+        setHasShift(true)
+        setIsOnShift(false)
+        setShiftWindow({
+          start: result.shiftAccess?.shiftStart,
+          end: result.shiftAccess?.shiftEnd,
+        })
+        setError(result.error || t('auth.outsideShift'))
         return
+      }
+      if (!result.success || !result.profile || !result.session) {
+        setError(result.error || t('auth.retryLoginFailed'))
+        return
+      }
+      await window.api.settings.set('authSession', result.session)
+      if (result.profile) {
+        const current = (await window.api.settings.get()) as {
+          latestShiftLookup?: LatestShiftLookup | null
+        }
+        const previous = current.latestShiftLookup
+        const sameUser = nationalCodesEqual(
+          previous?.nationalCode,
+          result.profile.nationalCode
+        )
+        await window.api.settings.set('latestShiftLookup', {
+          nationalCode: result.profile.nationalCode,
+          hasShift:
+            typeof result.hasShift === 'boolean'
+              ? result.hasShift
+              : sameUser
+                ? previous?.hasShift === true
+                : false,
+          isOnShift:
+            result.shiftAccess?.isWithinShift === true ||
+            result.hasShift === false ||
+            (sameUser ? previous?.isOnShift === true : false),
+          profile: result.profile,
+          shifts:
+            result.shifts && result.shifts.length > 0
+              ? result.shifts
+              : sameUser && previous?.shifts?.length
+                ? previous.shifts
+                : [],
+          fetchedAt: new Date().toISOString(),
+        })
       }
       onLoginSuccess(result.profile)
     } finally {
@@ -156,6 +263,12 @@ export function LoginGate({
           ) : (
             <>
               <div className="rounded-2xl border border-border bg-bg p-3">
+                <div className="mb-3 pb-2 border-b border-border">
+                  <p className="text-[11px] text-text-muted">{t('auth.today')}</p>
+                  <p className="text-sm font-semibold text-text" dir="rtl">
+                    {formatJalaliDateLong()}
+                  </p>
+                </div>
                 <div className="flex items-center gap-3">
                   {qualifiedProfile.imageUrl ? (
                     <img
@@ -177,12 +290,67 @@ export function LoginGate({
                     </p>
                   </div>
                 </div>
-                <div className="mt-3 space-y-1 text-xs text-text-secondary">
-                  <p>{t('auth.shiftHour')}: {qualifiedProfile.shiftHour}</p>
-                  <p>{t('auth.startDateTime')}: {qualifiedProfile.startDateTime}</p>
-                  <p>{t('auth.endDateTime')}: {qualifiedProfile.endDateTime}</p>
-                </div>
+                {(qualifiedProfile.shiftHour ||
+                  qualifiedProfile.startDateTime ||
+                  qualifiedProfile.endDateTime) && (
+                  <div className="mt-3 space-y-1 text-xs text-text-secondary">
+                    {qualifiedProfile.shiftHour && (
+                      <p>{t('auth.shiftType')}: {qualifiedProfile.shiftHour}</p>
+                    )}
+                    {qualifiedProfile.startDateTime && (
+                      <p>
+                        {t('auth.startDateTime')}:{' '}
+                        <span dir="rtl">{qualifiedProfile.startDateTime}</span>
+                      </p>
+                    )}
+                    {qualifiedProfile.endDateTime && (
+                      <p>
+                        {t('auth.endDateTime')}:{' '}
+                        <span dir="rtl">{qualifiedProfile.endDateTime}</span>
+                      </p>
+                    )}
+                    {qualifiedProfile.provinceTitle && (
+                      <p>{t('auth.province')}: {qualifiedProfile.provinceTitle}</p>
+                    )}
+                    {qualifiedProfile.branchTitle && (
+                      <p>{t('auth.location')}: {qualifiedProfile.branchTitle}</p>
+                    )}
+                  </div>
+                )}
               </div>
+
+              {outsideShift ? (
+                <div className="rounded-2xl border border-warning/40 bg-warning/10 p-3">
+                  <div className="text-sm font-semibold text-text">{t('auth.outsideShift')}</div>
+                  <p className="text-xs text-text-secondary mt-1">{t('auth.outsideShiftHelp')}</p>
+                  {(shiftWindow?.start || shiftWindow?.end) && (
+                    <div className="mt-2 space-y-1 text-xs text-text-secondary">
+                      {shiftWindow.start && (
+                        <p>
+                          {t('auth.startDateTime')}: <span dir="rtl">{shiftWindow.start}</span>
+                        </p>
+                      )}
+                      {shiftWindow.end && (
+                        <p>
+                          {t('auth.endDateTime')}: <span dir="rtl">{shiftWindow.end}</span>
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : hasShift && isOnShift ? (
+                <div className="rounded-2xl border border-success/30 bg-success/10 px-3 py-2 text-xs text-success">
+                  {t('auth.shiftAvailable')}
+                </div>
+              ) : hasShift ? (
+                <div className="rounded-2xl border border-border bg-bg-surface-2 px-3 py-2 text-xs text-text-secondary">
+                  {t('auth.shiftCheckServer')}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-border bg-bg-surface-2 px-3 py-2 text-xs text-text-secondary">
+                  {t('auth.noShiftCanLogin')}
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs text-text-secondary mb-1.5">
@@ -214,7 +382,7 @@ export function LoginGate({
         </div>
 
         {allowSkip && onSkip && (
-          <div className="mt-4 flex justify-end">
+          <div className="mt-4 flex justify-end border-t border-border pt-3">
             <button
               type="button"
               onClick={onSkip}

@@ -11,8 +11,8 @@ const defaults: AppSettings = {
   ringtonePath: '',
   ringtonePreset: 'classic',
   ringtoneVolume: 0.7,
-  micVolume: 0.8,
-  speakerVolume: 0.8,
+  micVolume: 1,
+  speakerVolume: 1,
   inputDevice: '',
   outputDevice: '',
   dndEnabled: false,
@@ -20,6 +20,9 @@ const defaults: AppSettings = {
   callForwardNumber: '',
   autoAnswer: false,
   autoAnswerDelay: 0,
+  autoRecordCalls: true,
+  recordingStereo: false,
+  recordingPath: '',
   enableLogging: false,
   enableTray: true,
   minimizeToTray: true,
@@ -32,11 +35,15 @@ const defaults: AppSettings = {
   screenPop: buildDefaults.screenPop,
   socketServer: buildDefaults.socketServer,
   developerOverrides: false,
+  shiftCheckIntervalMinutes: 10,
   userAccess: {
     status: 'needs_login',
     profile: null,
     selectedExtensionId: '',
+    reservedExtension: null,
   },
+  latestShiftLookup: null,
+  authSession: null,
 }
 
 const store = new Store<AppSettings>({ name: 'voxphone-settings', defaults })
@@ -64,16 +71,59 @@ export function getSettings(): AppSettings {
     settings.developerOverrides = false
     store.set('developerOverrides', false)
   }
+  {
+    const mins = Number(settings.shiftCheckIntervalMinutes)
+    if (!Number.isFinite(mins) || mins < 1) {
+      settings.shiftCheckIntervalMinutes = 10
+      store.set('shiftCheckIntervalMinutes', 10)
+    } else {
+      settings.shiftCheckIntervalMinutes = Math.min(1440, Math.floor(mins))
+    }
+  }
   if (!settings.userAccess) {
     settings.userAccess = {
       status: 'needs_login',
       profile: null,
       selectedExtensionId: '',
+      reservedExtension: null,
     }
     store.set('userAccess', settings.userAccess)
   } else if (typeof settings.userAccess.selectedExtensionId !== 'string') {
     settings.userAccess.selectedExtensionId = ''
     store.set('userAccess', settings.userAccess)
+  }
+  if (settings.userAccess && typeof settings.userAccess.reservedExtension === 'undefined') {
+    settings.userAccess.reservedExtension = null
+    store.set('userAccess', settings.userAccess)
+  }
+  if (typeof settings.latestShiftLookup === 'undefined') {
+    settings.latestShiftLookup = null
+    store.set('latestShiftLookup', null)
+  }
+  if (typeof settings.authSession === 'undefined') {
+    settings.authSession = null
+    store.set('authSession', null)
+  }
+  if (typeof settings.autoRecordCalls !== 'boolean') {
+    settings.autoRecordCalls = true
+    store.set('autoRecordCalls', true)
+  }
+  if (typeof settings.recordingStereo !== 'boolean') {
+    settings.recordingStereo = false
+    store.set('recordingStereo', false)
+  }
+  if (typeof settings.recordingPath !== 'string') {
+    settings.recordingPath = ''
+    store.set('recordingPath', '')
+  }
+  // Default mic/speaker to max; bump older 0.8 defaults to 1
+  if (typeof settings.micVolume !== 'number' || settings.micVolume === 0.8) {
+    settings.micVolume = 1
+    store.set('micVolume', 1)
+  }
+  if (typeof settings.speakerVolume !== 'number' || settings.speakerVolume === 0.8) {
+    settings.speakerVolume = 1
+    store.set('speakerVolume', 1)
   }
   if (settings.locale !== 'fa' && settings.locale !== 'en') {
     settings.locale = 'fa'

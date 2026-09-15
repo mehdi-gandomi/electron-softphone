@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Socket test</title>
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+  <style>
+    body { font-family: sans-serif; max-width: 42rem; margin: 1.5rem; }
+    pre { background: #111; color: #ddd; padding: 1rem; border-radius: 8px; white-space: pre-wrap; }
+    button { margin: 0.35rem 0.35rem 0 0; }
+  </style>
+</head>
+<body>
+  <h3>Socket test</h3>
+  <p>
+    Softphone footer <b>سوکت</b> must be green.<br />
+    Local file pages → <code>io('http://127.0.0.1:3920')</code><br />
+    HTTPS sites (emdad.rcs.ir) → <code>io('https://127.0.0.1:3921')</code> only — never wss on 3920.<br />
+    Firefox: open https://127.0.0.1:3921 once and accept the certificate.
+  </p>
+  <button type="button" id="btnHttp">Test HTTP :3920</button>
+  <button type="button" id="btnHttps">Open HTTPS :3921 (trust cert)</button>
+  <button type="button" id="btnSocketHttp">Connect Socket HTTP</button>
+  <button type="button" id="btnSocketHttps">Connect Socket HTTPS</button>
+  <pre id="log">Ready.\n</pre>
+  <script>
+    const HTTP = 'http://127.0.0.1:3920'
+    const HTTPS = 'https://127.0.0.1:3921'
+    const logEl = document.getElementById('log')
+    const log = (m) => { logEl.textContent += m + '\n'; console.log(m) }
+    let socket = null
+
+    document.getElementById('btnHttp').onclick = async () => {
+      log('--- GET ' + HTTP + '/')
+      try {
+        const res = await fetch(HTTP + '/')
+        log('HTTP ' + res.status + ': ' + (await res.text()))
+      } catch (e) {
+        log('HTTP FAILED: ' + e.message)
+      }
+    }
+
+    document.getElementById('btnHttps').onclick = () => {
+      log('--- Open ' + HTTPS + ' in a tab and accept the certificate warning')
+      window.open(HTTPS + '/', '_blank')
+    }
+
+    function connect(url) {
+      if (socket) { socket.disconnect(); socket = null }
+      log('--- Socket.IO ' + url)
+      socket = io(url, {
+        transports: ['polling', 'websocket'],
+        reconnectionAttempts: 3,
+        timeout: 8000,
+      })
+      socket.on('connect', () => log('CONNECTED ' + socket.id + ' via ' + socket.io.engine.transport.name))
+      socket.on('connect_error', (e) => log('ERROR ' + e.message))
+      socket.on('disconnect', (r) => log('DISCONNECTED ' + r))
+      socket.on('incoming_call', (d) => log('incoming_call ' + JSON.stringify(d)))
+      socket.on('call_answered', (d) => log('call_answered ' + JSON.stringify(d)))
+      socket.on('call_ended', (d) => log('call_ended ' + JSON.stringify(d)))
+      socket.on('nuisance_report', (d) => log('nuisance_report ' + JSON.stringify(d)))
+      socket.on('operator_info', (d) => log('operator_info ' + JSON.stringify(d)))
+    }
+
+    document.getElementById('btnSocketHttp').onclick = () => connect(HTTP)
+    document.getElementById('btnSocketHttps').onclick = () => connect(HTTPS)
+  </script>
+</body>
+</html>

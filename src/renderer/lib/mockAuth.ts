@@ -1,45 +1,46 @@
 import { getBuildAuthConfig } from '../../shared/buildConfig'
-import type { UserProfile } from '../../shared/types'
+import { nationalCodesEqual, normalizeNationalCode } from '../../shared/nationalCode'
+import type { AuthSession, ShiftAssignment, UserProfile } from '../../shared/types'
+import { loginWithNationalCode, type ShiftAccessInfo } from './authApi'
+import { fetchShiftInfoByNationalCode } from './shiftInfoApi'
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-function getMockUser() {
-  return getBuildAuthConfig().mockUser
 }
 
 function getConflictInfo() {
   return getBuildAuthConfig().conflict
 }
 
-let remoteSessionActive = getConflictInfo().enabled
-
-function profileFromMock(): UserProfile {
-  const user = getMockUser()
-  return {
-    nationalCode: user.nationalCode,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    imageUrl: user.imageUrl,
-    shiftHour: user.shiftHour,
-    startDateTime: user.startDateTime,
-    endDateTime: user.endDateTime,
-    position: user.position,
-  }
+function isSessionCheckEnabled() {
+  return getBuildAuthConfig().sessionCheckEnabled !== false
 }
+
+let remoteSessionActive = isSessionCheckEnabled() && getConflictInfo().enabled
+let latestQualifiedProfile: UserProfile | null = null
 
 export async function qualifyNationalCode(nationalCode: string): Promise<{
   success: boolean
   profile?: UserProfile
   error?: string
+  hasShift?: boolean
+  isOnShift?: boolean
+  shifts?: ShiftAssignment[]
 }> {
-  await sleep(450)
-  const user = getMockUser()
-  if (nationalCode.trim() !== user.nationalCode) {
-    return { success: false, error: 'invalid_national_code' }
+  const result = await fetchShiftInfoByNationalCode(normalizeNationalCode(nationalCode))
+  if (!result.success) {
+    latestQualifiedProfile = null
+    return { success: false, error: result.error }
   }
-  return { success: true, profile: profileFromMock() }
+
+  latestQualifiedProfile = result.profile
+  return {
+    success: true,
+    profile: result.profile,
+    hasShift: result.hasShift,
+    isOnShift: result.isOnShift,
+    shifts: result.shifts,
+  }
 }
 
 export async function loginWithPassword(
@@ -48,7 +49,12 @@ export async function loginWithPassword(
 ): Promise<{
   success: boolean
   profile?: UserProfile
+  session?: AuthSession
   error?: string
+  errorCode?: string
+  shiftAccess?: ShiftAccessInfo | null
+  hasShift?: boolean
+  shifts?: ShiftAssignment[]
   conflict?: {
     pcName: string
     ipAddress: string
@@ -56,16 +62,8 @@ export async function loginWithPassword(
     lastSeen: string
   }
 }> {
-  await sleep(550)
-  const user = getMockUser()
   const conflict = getConflictInfo()
-  if (nationalCode.trim() !== user.nationalCode) {
-    return { success: false, error: 'invalid_national_code' }
-  }
-  if (password !== user.password) {
-    return { success: false, error: 'invalid_password' }
-  }
-  if (remoteSessionActive) {
+  if (isSessionCheckEnabled() && remoteSessionActive) {
     return {
       success: false,
       error: 'logged_in_elsewhere',
@@ -77,7 +75,34 @@ export async function loginWithPassword(
       },
     }
   }
-  return { success: true, profile: profileFromMock() }
+
+  const existingProfile =
+    latestQualifiedProfile &&
+    nationalCodesEqual(latestQualifiedProfile.nationalCode, nationalCode)
+      ? latestQualifiedProfile
+      : null
+
+  const result = await loginWithNationalCode(nationalCode, password, existingProfile)
+  if (!result.success) {
+    if (result.profile) latestQualifiedProfile = result.profile
+    return {
+      success: false,
+      error: result.error,
+      errorCode: result.errorCode,
+      profile: result.profile,
+      shiftAccess: result.shiftAccess,
+    }
+  }
+
+  latestQualifiedProfile = result.profile
+  return {
+    success: true,
+    profile: result.profile,
+    session: result.session,
+    shiftAccess: result.shiftAccess,
+    hasShift: result.hasShift,
+    shifts: result.shifts,
+  }
 }
 
 export async function logoutOtherSession(_nationalCode: string): Promise<{
