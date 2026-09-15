@@ -17,7 +17,7 @@
     "package:portable": "electron-builder --win portable --config electron-builder.yml --publish never",
     "hooks:install": "node scripts/install-git-hooks.js",
     "version:patch": "node scripts/bump-version.js",
-    "release": "node scripts/extract-release-notes.js && npm run build && electron-builder --win nsis --config electron-builder.yml --publish always",
+    "release": "node scripts/release.js",
     "prepare": "node scripts/install-git-hooks.js"
   },
   "dependencies": {

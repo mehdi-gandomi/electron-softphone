@@ -17,6 +17,7 @@ import { ExtensionChangeModal } from './components/auth/ExtensionChangeModal'
 import { LoginGate } from './components/auth/LoginGate'
 import { ClockGate } from './components/auth/ClockGate'
 import { ShiftExpiryGuard } from './components/auth/ShiftExpiryGuard'
+import { UpdateAvailableModal } from './components/settings/UpdateAvailableModal'
 import { WindowHeader } from './components/layout/WindowHeader'
 import { ProfilePanel } from './components/profile/ProfilePanel'
 import { useSipStore } from './stores/sipStore'
@@ -541,6 +542,7 @@ function AppContent() {
         intervalMinutes={settings.shiftCheckIntervalMinutes ?? 10}
         onForceLogout={handleLogout}
       />
+      <UpdateAvailableModal />
       <PhoneFrame>
         {showLoginSetup ? (
           <SetupShell>

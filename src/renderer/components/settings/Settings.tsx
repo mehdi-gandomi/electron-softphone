@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
-import type { SipAccount, AppSettings, ScreenPopSettings, ScreenPopParam, ScreenPopParamSource, SocketServerSettings, UpdaterStatus } from '../../../shared/types'
+import type { SipAccount, AppSettings, ScreenPopSettings, ScreenPopParam, ScreenPopParamSource, SocketServerSettings } from '../../../shared/types'
 import { randomId } from '../../lib/utils'
 import { useTheme } from '../../lib/theme'
 import { useI18n, type Locale } from '../../lib/i18n'
 import { applyOutputSink } from '../../lib/audioDevices'
 import { DebugLog } from '../debug/DebugLog'
 import { AudioDevicePanel } from './AudioDevicePanel'
+import { hasNewerRelease, useUpdater } from '../../lib/useUpdater'
 
 type SettingsTab = 'account' | 'audio' | 'advanced' | 'api' | 'update' | 'debug'
 
@@ -665,148 +666,86 @@ function AudioTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: (ke
 // Update Tab
 // ============================================================
 
-const emptyUpdaterStatus: UpdaterStatus = {
-  currentVersion: '',
-  latestVersion: null,
-  releaseNotes: '',
-  releaseUrl: '',
-  state: 'idle',
-  progress: 0,
-  error: null,
-  canInstall: false,
-  packaged: false,
-  portable: false,
-}
-
 function UpdateTab() {
   const { t } = useI18n()
-  const [status, setStatus] = useState<UpdaterStatus>(emptyUpdaterStatus)
-
-  useEffect(() => {
-    let cancelled = false
-
-    const apply = (next: UpdaterStatus) => {
-      if (!cancelled) setStatus(next)
-    }
-
-    window.api.updater.status().then(apply).catch(() => {})
-    window.api.updater.check().then(apply).catch(() => {})
-
-    const stop = window.api.updater.onStatus(apply)
-    return () => {
-      cancelled = true
-      stop()
-    }
-  }, [])
+  const { status, check, download, install } = useUpdater()
 
   const busy = status.state === 'checking' || status.state === 'downloading'
-
-  const handleCheck = async () => {
-    const next = await window.api.updater.check()
-    setStatus(next)
-  }
-
-  const handleDownload = async () => {
-    const next = await window.api.updater.download()
-    setStatus(next)
-  }
-
-  const handleInstall = async () => {
-    const result = await window.api.updater.install()
-    if (!result.success && result.error) {
-      setStatus((prev) => ({ ...prev, state: 'error', error: result.error || prev.error }))
-    }
-  }
+  const newer = hasNewerRelease(status)
 
   return (
-    <div className="space-y-6">
-      <Section title={t('settings.tab.update')}>
-        <div className="flex items-center justify-between gap-3 text-sm">
-          <span className="text-text-secondary">{t('settings.update.current')}</span>
-          <span className="font-mono text-text" dir="ltr">{status.currentVersion || '—'}</span>
-        </div>
-        {status.latestVersion && (
-          <div className="flex items-center justify-between gap-3 text-sm">
-            <span className="text-text-secondary">{t('settings.update.latest')}</span>
-            <span className="font-mono text-text" dir="ltr">{status.latestVersion}</span>
-          </div>
-        )}
-
+    <div className="p-3 bg-bg-surface rounded-xl border border-border space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <span className="font-mono text-sm text-text" dir="ltr">
+          {status.currentVersion || '—'}
+          {newer && status.latestVersion ? (
+            <>
+              <span className="text-text-muted mx-1">→</span>
+              {status.latestVersion}
+            </>
+          ) : null}
+        </span>
         {status.state === 'unavailable' && (
-          <p className="text-sm text-success">{t('settings.update.upToDate')}</p>
+          <span className="text-xs text-success shrink-0">{t('settings.update.upToDate')}</span>
         )}
         {status.state === 'available' && (
-          <p className="text-sm text-accent">{t('settings.update.available')}</p>
+          <span className="text-xs text-accent shrink-0">{t('settings.update.available')}</span>
         )}
         {status.state === 'error' && (
-          <p className="text-sm text-error">
-            {t('settings.update.error')}
-            {status.error ? `: ${status.error}` : ''}
+          <span className="text-xs text-error shrink-0">{t('settings.update.error')}</span>
+        )}
+      </div>
+
+      {!status.packaged && (
+        <p className="text-[11px] text-text-muted leading-snug">{t('settings.update.devMode')}</p>
+      )}
+      {status.packaged && status.portable && (
+        <p className="text-[11px] text-text-muted leading-snug">{t('settings.update.portable')}</p>
+      )}
+
+      {status.state === 'downloading' && (
+        <div>
+          <p className="text-[11px] text-text-secondary mb-1">
+            {t('settings.update.downloading', { percent: status.progress })}
           </p>
-        )}
-
-        {!status.packaged && (
-          <p className="text-[11px] text-text-muted leading-relaxed">{t('settings.update.devMode')}</p>
-        )}
-        {status.packaged && status.portable && (
-          <p className="text-[11px] text-text-muted leading-relaxed">{t('settings.update.portable')}</p>
-        )}
-
-        {status.state === 'downloading' && (
-          <div>
-            <p className="text-xs text-text-secondary mb-1">
-              {t('settings.update.downloading', { percent: status.progress })}
-            </p>
-            <div className="h-1.5 rounded-full bg-bg-surface-2 overflow-hidden">
-              <div
-                className="h-full rounded-full bg-accent transition-[width] duration-150"
-                style={{ width: `${Math.max(2, status.progress)}%` }}
-              />
-            </div>
+          <div className="h-1.5 rounded-full bg-bg-surface-2 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-accent transition-[width] duration-150"
+              style={{ width: `${Math.max(2, status.progress)}%` }}
+            />
           </div>
-        )}
-
-        <div className="flex flex-col gap-2">
-          {status.state === 'ready' && status.canInstall ? (
-            <button type="button" onClick={() => void handleInstall()} className="btn-primary text-sm py-2">
-              {t('settings.update.install')}
-            </button>
-          ) : status.state === 'available' && status.canInstall ? (
-            <button
-              type="button"
-              onClick={() => void handleDownload()}
-              disabled={busy}
-              className="btn-primary text-sm py-2 disabled:opacity-60"
-            >
-              {t('settings.update.download')}
-            </button>
-          ) : status.state === 'available' ? (
-            <button type="button" onClick={() => void window.api.updater.openRelease()} className="btn-primary text-sm py-2">
-              {t('settings.update.openRelease')}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => void handleCheck()}
-              disabled={busy}
-              className="btn-primary text-sm py-2 disabled:opacity-60"
-            >
-              {busy && status.state === 'checking' ? t('settings.update.checking') : t('settings.update.check')}
-            </button>
-          )}
-          {!(status.state === 'available' && !status.canInstall) && (
-            <button type="button" onClick={() => void window.api.updater.openRelease()} className="btn-ghost text-sm py-2">
-              {t('settings.update.openRelease')}
-            </button>
-          )}
         </div>
-      </Section>
+      )}
 
-      <Section title={t('settings.update.changelog')}>
-        <div className="text-sm text-text-secondary whitespace-pre-wrap leading-relaxed" dir="auto">
-          {status.releaseNotes || t('settings.update.noNotes')}
+      {status.state === 'ready' && status.canInstall ? (
+        <button type="button" onClick={() => void install()} className="btn-primary w-full text-sm py-2">
+          {t('settings.update.install')}
+        </button>
+      ) : status.state === 'available' && status.canInstall ? (
+        <button
+          type="button"
+          onClick={() => void download()}
+          disabled={busy}
+          className="btn-primary w-full text-sm py-2 disabled:opacity-60"
+        >
+          {t('settings.update.download')}
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => void check()}
+          disabled={busy}
+          className="btn-primary w-full text-sm py-2 disabled:opacity-60"
+        >
+          {busy && status.state === 'checking' ? t('settings.update.checking') : t('settings.update.check')}
+        </button>
+      )}
+
+      {status.releaseNotes ? (
+        <div className="text-xs text-text-secondary whitespace-pre-wrap leading-relaxed max-h-28 overflow-y-auto" dir="auto">
+          {status.releaseNotes}
         </div>
-      </Section>
+      ) : null}
     </div>
   )
 }
