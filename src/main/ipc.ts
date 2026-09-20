@@ -25,7 +25,7 @@ import {
   ensureRecordingDir,
 } from './recording'
 import { postAuthLogin, postShiftInfo, getExtensionsStatus, postReserveExtension, postLogoutExtension } from './remoteApi'
-import { checkSystemClock } from './clockCheck'
+import { fetchEmdadServerTime } from './clockCheck'
 import {
   syncSocketServerFromSettings,
   emitIncomingCall,
@@ -487,8 +487,8 @@ export function initIpc(win: BrowserWindow) {
     return postAuthLogin(String(username || ''), String(password || ''))
   })
 
-  ipcMain.handle('system:check-clock', async () => {
-    return checkSystemClock()
+  ipcMain.handle('system:server-time', async () => {
+    return fetchEmdadServerTime()
   })
 
   ipcMain.handle('system:open-date-settings', async () => {

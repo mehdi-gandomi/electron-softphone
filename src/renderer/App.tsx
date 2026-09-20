@@ -162,6 +162,18 @@ function AppContent() {
     const provinceId =
       reserved?.provinceId || userAccess.profile?.provinceId
 
+    const callState = useCallStore.getState()
+    for (const call of callState.calls.values()) {
+      try {
+        await window.api.sip.hangupCall(call.id)
+      } catch {
+        // Continue logout even if hangup fails.
+      }
+      callState.removeCall(call.id)
+    }
+    callState.setIncomingCall(null)
+    closeIncomingCallNotification()
+
     try {
       await window.api.sip.unregister()
     } catch {
@@ -184,7 +196,7 @@ function AppContent() {
       }
     }
 
-    // Clear stored SIP credentials from the active account when possible
+    // Remove the reserved SIP account so settings does not keep a released extension
     try {
       const currentSettings = (await window.api.settings.get()) as AppSettings
       const accountId =
@@ -197,12 +209,15 @@ function AppContent() {
           item.username === extensionNumber
       )
       if (account) {
-        await window.api.accounts.update(account.id, {
-          ...account,
-          password: '',
-          sipServer: '',
-          domain: '',
-          enabled: false,
+        await window.api.accounts.remove(account.id)
+        setSettings((prev) => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            accounts: prev.accounts.filter((item) => item.id !== account.id),
+            activeAccountId:
+              prev.activeAccountId === account.id ? '' : prev.activeAccountId,
+          }
         })
       }
     } catch {

@@ -24,6 +24,7 @@ async function remoteJsonRequest(
     body?: Record<string, unknown>
     query?: Record<string, string | number | undefined>
     extraHeaders?: Record<string, string>
+    cache?: RequestCache
   }
 ): Promise<RemoteApiResponse> {
   const baseUrl = getApiBaseUrl()
@@ -42,6 +43,7 @@ async function remoteJsonRequest(
   try {
     const response = await fetch(url.toString(), {
       method,
+      cache: options?.cache,
       headers: {
         Accept: 'application/json',
         ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}),
@@ -99,6 +101,17 @@ export function remoteJsonGet(
   extraHeaders?: Record<string, string>
 ): Promise<RemoteApiResponse> {
   return remoteJsonRequest('GET', path, { query, extraHeaders })
+}
+
+/** Public clock probe — no auth, no CSRF. */
+export function getEmdadServerTime(): Promise<RemoteApiResponse> {
+  return remoteJsonRequest('GET', '/ecrc/api/emdad-phone/server-time', {
+    cache: 'no-store',
+    extraHeaders: {
+      'Cache-Control': 'no-store',
+      Pragma: 'no-cache',
+    },
+  })
 }
 
 export function postShiftInfo(nationalCode: string): Promise<RemoteApiResponse> {

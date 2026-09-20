@@ -3,21 +3,37 @@ import { isOnShiftNow } from '../../../shared/shiftTime'
 import { nationalCodesEqual } from '../../../shared/nationalCode'
 import { fetchShiftInfoByNationalCode } from '../../lib/shiftInfoApi'
 import { useI18n } from '../../lib/i18n'
-import type { LatestShiftLookup, UserAccessState } from '../../../shared/types'
+import type { LatestShiftLookup, ShiftAssignment, UserAccessState } from '../../../shared/types'
 
-function hasActiveShift(lookup: LatestShiftLookup | null): boolean {
+function isCurrentlyOnShift(lookup: LatestShiftLookup | null): boolean {
   if (!lookup?.hasShift) return false
   const shifts = lookup.shifts || []
-  if (shifts.length === 0) {
-    // No rule data to evaluate — do not force logout
-    return true
-  }
+  if (shifts.length === 0) return lookup.isOnShift === true
   return shifts.some((shift) =>
     isOnShiftNow({
       shiftSlotRule: shift.shiftSlotRule,
       orderShift: shift.orderShift,
     })
   )
+}
+
+function toLookup(
+  nationalCode: string,
+  result: {
+    hasShift: boolean
+    isOnShift: boolean
+    profile: LatestShiftLookup['profile']
+    shifts: ShiftAssignment[]
+  }
+): LatestShiftLookup {
+  return {
+    nationalCode,
+    hasShift: result.hasShift === true,
+    isOnShift: result.isOnShift === true,
+    profile: result.profile,
+    shifts: result.shifts || [],
+    fetchedAt: new Date().toISOString(),
+  }
 }
 
 interface ShiftExpiryGuardProps {
@@ -27,8 +43,9 @@ interface ShiftExpiryGuardProps {
 }
 
 /**
- * While logged in with an assigned shift, periodically compares local time
- * against shift windows. When the shift has ended, shows a popup and logs out.
+ * While logged in, periodically re-fetches today's shift from the API.
+ * When an active shift has ended, shows a popup, logs the user out,
+ * releases the extension, and removes the SIP account.
  */
 export function ShiftExpiryGuard({
   userAccess,
@@ -38,13 +55,20 @@ export function ShiftExpiryGuard({
   const { t, isRtl } = useI18n()
   const [showEnded, setShowEnded] = useState(false)
   const armedRef = useRef(false)
+  const sawOnShiftRef = useRef(false)
+  const loggingOutRef = useRef<Promise<void> | null>(null)
   const onForceLogoutRef = useRef(onForceLogout)
   onForceLogoutRef.current = onForceLogout
 
   useEffect(() => {
+    if (armedRef.current) return
+    sawOnShiftRef.current = false
+    loggingOutRef.current = null
+    setShowEnded(false)
+  }, [userAccess.profile?.nationalCode])
+
+  useEffect(() => {
     if (userAccess.status !== 'logged_in' || !userAccess.profile) {
-      setShowEnded(false)
-      armedRef.current = false
       return
     }
 
@@ -53,6 +77,19 @@ export function ShiftExpiryGuard({
     const periodMs = minutes * 60 * 1000
     const nationalCode = userAccess.profile.nationalCode
 
+    const persistLookup = async (lookup: LatestShiftLookup) => {
+      await window.api.settings.set('latestShiftLookup', lookup)
+    }
+
+    const runForceLogout = () => {
+      if (!loggingOutRef.current) {
+        loggingOutRef.current = Promise.resolve(onForceLogoutRef.current()).catch(
+          () => undefined
+        )
+      }
+      return loggingOutRef.current
+    }
+
     const runCheck = async () => {
       if (cancelled || armedRef.current || !nationalCode) return
       try {
@@ -60,53 +97,57 @@ export function ShiftExpiryGuard({
           latestShiftLookup?: LatestShiftLookup | null
         }
         let lookup = settings.latestShiftLookup || null
-
-        // Refresh shift rules if missing so expiry can be evaluated
         if (
-          nationalCodesEqual(lookup?.nationalCode, nationalCode) &&
-          lookup?.hasShift &&
-          (!lookup.shifts || lookup.shifts.length === 0)
+          lookup &&
+          nationalCodesEqual(lookup.nationalCode, nationalCode) &&
+          lookup.hasShift &&
+          (lookup.isOnShift || isCurrentlyOnShift(lookup))
         ) {
-          const refreshed = await fetchShiftInfoByNationalCode(nationalCode)
-          if (refreshed.success && refreshed.profile) {
-            lookup = {
-              nationalCode,
-              hasShift: refreshed.hasShift === true,
-              isOnShift: refreshed.isOnShift === true,
-              profile: refreshed.profile,
-              shifts: refreshed.shifts || [],
-              fetchedAt: new Date().toISOString(),
-            }
-            await window.api.settings.set('latestShiftLookup', lookup)
-          }
+          sawOnShiftRef.current = true
         }
 
-        if (
-          !lookup ||
-          !nationalCodesEqual(lookup.nationalCode, nationalCode) ||
-          !lookup.hasShift
+        const refreshed = await fetchShiftInfoByNationalCode(nationalCode)
+        if (cancelled || armedRef.current) return
+
+        if (refreshed.success) {
+          lookup = toLookup(nationalCode, refreshed)
+          await persistLookup(lookup)
+        } else if (
+          lookup &&
+          nationalCodesEqual(lookup.nationalCode, nationalCode) &&
+          (lookup.shifts || []).length > 0
         ) {
+          lookup = {
+            ...lookup,
+            isOnShift: isCurrentlyOnShift(lookup),
+          }
+        } else {
           return
         }
 
-        if (hasActiveShift(lookup)) {
+        if (!nationalCodesEqual(lookup.nationalCode, nationalCode)) return
+
+        if (isCurrentlyOnShift(lookup)) {
+          sawOnShiftRef.current = true
           if (lookup.isOnShift !== true) {
-            await window.api.settings.set('latestShiftLookup', {
-              ...lookup,
-              isOnShift: true,
-            })
+            lookup = { ...lookup, isOnShift: true }
+            await persistLookup(lookup)
           }
           return
         }
+
+        if (!sawOnShiftRef.current) return
 
         armedRef.current = true
-        await window.api.settings.set('latestShiftLookup', {
+        await persistLookup({
           ...lookup,
           isOnShift: false,
         })
+        if (cancelled) return
         setShowEnded(true)
+        void runForceLogout()
       } catch {
-        // Ignore transient failures
+        // Ignore transient failures; the next interval will retry.
       }
     }
 
@@ -126,11 +167,18 @@ export function ShiftExpiryGuard({
   }, [userAccess.status, userAccess.profile?.nationalCode, intervalMinutes])
 
   const handleAcknowledge = async () => {
-    setShowEnded(false)
     try {
-      await onForceLogoutRef.current()
+      if (!loggingOutRef.current) {
+        loggingOutRef.current = Promise.resolve(onForceLogoutRef.current()).catch(
+          () => undefined
+        )
+      }
+      await loggingOutRef.current
     } finally {
+      setShowEnded(false)
       armedRef.current = false
+      sawOnShiftRef.current = false
+      loggingOutRef.current = null
     }
   }
 
@@ -138,7 +186,7 @@ export function ShiftExpiryGuard({
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[80] flex items-center justify-center backdrop-blur-sm p-4"
       style={{ backgroundColor: 'var(--overlay-backdrop)' }}
       role="dialog"
       aria-modal="true"

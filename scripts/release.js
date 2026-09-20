@@ -87,8 +87,23 @@ process.env.GH_TOKEN = token
 process.env.GITHUB_TOKEN = token
 
 const tokenEnv = { GH_TOKEN: token, GITHUB_TOKEN: token }
-const electronViteCli = require.resolve('electron-vite/bin/electron-vite.js')
-const electronBuilderCli = require.resolve('electron-builder/cli.js')
+
+function resolvePackageBin(packageName, binName) {
+  const pkgJsonPath = require.resolve(`${packageName}/package.json`)
+  const pkg = require(pkgJsonPath)
+  const binField = pkg.bin
+  const rel =
+    typeof binField === 'string'
+      ? binField
+      : binField && (binField[binName] || binField[packageName])
+  if (!rel) {
+    throw new Error(`No bin "${binName}" in ${packageName}`)
+  }
+  return path.join(path.dirname(pkgJsonPath), rel)
+}
+
+const electronViteCli = resolvePackageBin('electron-vite', 'electron-vite')
+const electronBuilderCli = resolvePackageBin('electron-builder', 'electron-builder')
 
 run(process.execPath, [path.join(root, 'scripts', 'extract-release-notes.js')], tokenEnv)
 run(process.execPath, [electronViteCli, 'build'], tokenEnv)

@@ -164,16 +164,10 @@ declare global {
         }>
       }
       system: {
-        checkClock: () => Promise<{
+        serverTime: () => Promise<{
           ok: boolean
-          blocked: boolean
-          skewMs: number
-          maxSkewMs: number
-          localTimeMs: number
-          trustedTimeMs: number | null
-          source: string | null
-          localLabel: string
-          trustedLabel: string | null
+          status: number
+          json: unknown | null
           error?: string
         }>
         openDateSettings: () => Promise<{ success: boolean; error?: string }>

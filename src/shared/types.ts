@@ -156,7 +156,8 @@ export interface AppSettings {
    */
   developerOverrides: boolean
   /**
-   * How often (minutes) to check whether the user's shift has ended while logged in.
+   * How often (minutes) to re-fetch shift info from the API while logged in.
+   * When the assigned shift has ended, the user is logged out.
    * Editable in developer mode. Default: 10.
    */
   shiftCheckIntervalMinutes: number

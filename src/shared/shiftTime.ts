@@ -1,3 +1,5 @@
+import { TEHRAN_OFFSET_MINUTES, TEHRAN_TZ } from './clockGate'
+
 export type ShiftRuleInput = {
   shift_slot_rule?: number
   order_shift?: number
@@ -20,7 +22,7 @@ export type ShiftWindow = ShiftTime & {
   durationHours: number
 }
 
-/** Hours from midnight of the shift's base day (08:00 base system). */
+/** Hours from midnight of the shift's base day (08:00 Asia/Tehran base system). */
 const SHIFT_RULES: Record<number, Array<{ start: number; end: number }>> = {
   // 3 × 8 hours
   1: [
@@ -57,16 +59,48 @@ function formatClock(hour: number): string {
   return `${String(h).padStart(2, '0')}:00`
 }
 
-function startOfLocalDay(date: Date): Date {
-  const d = new Date(date)
-  d.setHours(0, 0, 0, 0)
-  return d
+function tehranParts(date: Date): {
+  year: number
+  month: number
+  day: number
+} {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: TEHRAN_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date)
+  const map: Record<string, string> = {}
+  for (const part of parts) {
+    if (part.type !== 'literal') map[part.type] = part.value
+  }
+  return {
+    year: Number(map.year),
+    month: Number(map.month),
+    day: Number(map.day),
+  }
 }
 
-function atHourFromBaseDay(baseDay: Date, hourValue: number): Date {
-  const d = startOfLocalDay(baseDay)
-  d.setHours(hourValue, 0, 0, 0)
-  return d
+/** Instant of a Tehran wall-clock Y-M-D 00:00 (fixed UTC+03:30, no DST). */
+function tehranWallToUtc(
+  year: number,
+  month: number,
+  day: number,
+  hour = 0
+): Date {
+  return new Date(
+    Date.UTC(year, month - 1, day, hour, 0, 0) - TEHRAN_OFFSET_MINUTES * 60 * 1000
+  )
+}
+
+function startOfTehranDay(date: Date): Date {
+  const { year, month, day } = tehranParts(date)
+  return tehranWallToUtc(year, month, day, 0)
+}
+
+function atHourFromTehranBaseDay(baseDay: Date, hourValue: number): Date {
+  const start = startOfTehranDay(baseDay)
+  return new Date(start.getTime() + hourValue * 60 * 60 * 1000)
 }
 
 /**
@@ -87,7 +121,7 @@ export function getShiftTime(input: ShiftRuleInput): ShiftTime | null {
   }
 }
 
-/** Absolute start/end Date for a shift on a given base calendar day. */
+/** Absolute start/end Date for a shift on a given Asia/Tehran calendar day. */
 export function getShiftWindow(
   input: ShiftRuleInput,
   baseDay: Date = new Date()
@@ -98,8 +132,8 @@ export function getShiftWindow(
   const shift = SHIFT_RULES[keys.shiftSlotRule]?.[keys.orderShift - 1]
   if (!shift) return null
 
-  const startAt = atHourFromBaseDay(baseDay, shift.start)
-  const endAt = atHourFromBaseDay(baseDay, shift.end)
+  const startAt = atHourFromTehranBaseDay(baseDay, shift.start)
+  const endAt = atHourFromTehranBaseDay(baseDay, shift.end)
 
   return {
     start: formatClock(shift.start),
@@ -113,14 +147,14 @@ export function getShiftWindow(
   }
 }
 
-/** Whether `now` falls inside this shift (checks today and yesterday base days). */
+/** Whether `now` falls inside this shift (checks today and yesterday Tehran base days). */
 export function isOnShiftNow(
   input: ShiftRuleInput,
   now: Date = new Date()
 ): boolean {
+  const today = startOfTehranDay(now)
   for (const dayOffset of [0, -1]) {
-    const base = startOfLocalDay(now)
-    base.setDate(base.getDate() + dayOffset)
+    const base = new Date(today.getTime() + dayOffset * 24 * 60 * 60 * 1000)
     const window = getShiftWindow(input, base)
     if (window && now >= window.startAt && now < window.endAt) {
       return true
@@ -129,20 +163,20 @@ export function isOnShiftNow(
   return false
 }
 
-/** Active window for display: prefer the window that contains now, else today's base. */
+/** Active window for display: prefer the window that contains now, else today's Tehran base. */
 export function resolveCurrentShiftWindow(
   input: ShiftRuleInput,
   now: Date = new Date()
 ): ShiftWindow | null {
+  const today = startOfTehranDay(now)
   for (const dayOffset of [0, -1]) {
-    const base = startOfLocalDay(now)
-    base.setDate(base.getDate() + dayOffset)
+    const base = new Date(today.getTime() + dayOffset * 24 * 60 * 60 * 1000)
     const window = getShiftWindow(input, base)
     if (window && now >= window.startAt && now < window.endAt) {
       return window
     }
   }
-  return getShiftWindow(input, startOfLocalDay(now))
+  return getShiftWindow(input, today)
 }
 
 export function formatShiftHourLabel(time: ShiftTime): string {
