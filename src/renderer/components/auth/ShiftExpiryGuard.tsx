@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { isOnShiftNow } from '../../../shared/shiftTime'
+import {
+  hasTehranRangeEnded,
+  isNowWithinTehranRange,
+  isOnShiftNow,
+} from '../../../shared/shiftTime'
 import { nationalCodesEqual } from '../../../shared/nationalCode'
 import { fetchShiftInfoByNationalCode } from '../../lib/shiftInfoApi'
 import { useI18n } from '../../lib/i18n'
@@ -7,13 +11,35 @@ import type { LatestShiftLookup, ShiftAssignment, UserAccessState } from '../../
 
 function isCurrentlyOnShift(lookup: LatestShiftLookup | null): boolean {
   if (!lookup?.hasShift) return false
+
+  const fromApiDates = isNowWithinTehranRange(
+    lookup.profile?.startDateTime,
+    lookup.profile?.endDateTime
+  )
+  if (fromApiDates === true) return true
+
   const shifts = lookup.shifts || []
+  if (
+    shifts.some((shift) =>
+      isOnShiftNow({
+        shiftSlotRule: shift.shiftSlotRule,
+        orderShift: shift.orderShift,
+      })
+    )
+  ) {
+    return true
+  }
+
+  if (fromApiDates === false) return false
   if (shifts.length === 0) return lookup.isOnShift === true
-  return shifts.some((shift) =>
-    isOnShiftNow({
-      shiftSlotRule: shift.shiftSlotRule,
-      orderShift: shift.orderShift,
-    })
+  return false
+}
+
+function hasExplicitShiftEnded(lookup: LatestShiftLookup | null): boolean {
+  if (!lookup?.profile) return false
+  return (
+    hasTehranRangeEnded(lookup.profile.startDateTime, lookup.profile.endDateTime) ===
+    true
   )
 }
 
@@ -136,7 +162,18 @@ export function ShiftExpiryGuard({
           return
         }
 
-        if (!sawOnShiftRef.current) return
+        const endedByDates = hasExplicitShiftEnded(lookup)
+        const datesKnown =
+          isNowWithinTehranRange(
+            lookup.profile?.startDateTime,
+            lookup.profile?.endDateTime
+          ) !== null
+        const endedByRules =
+          !datesKnown &&
+          sawOnShiftRef.current &&
+          (lookup.shifts || []).length > 0
+
+        if (!endedByDates && !endedByRules) return
 
         armedRef.current = true
         await persistLookup({

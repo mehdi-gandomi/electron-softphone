@@ -81,16 +81,79 @@ function tehranParts(date: Date): {
   }
 }
 
-/** Instant of a Tehran wall-clock Y-M-D 00:00 (fixed UTC+03:30, no DST). */
+/** Instant of a Tehran wall-clock (fixed UTC+03:30, no DST). */
 function tehranWallToUtc(
   year: number,
   month: number,
   day: number,
-  hour = 0
+  hour = 0,
+  minute = 0,
+  second = 0
 ): Date {
   return new Date(
-    Date.UTC(year, month - 1, day, hour, 0, 0) - TEHRAN_OFFSET_MINUTES * 60 * 1000
+    Date.UTC(year, month - 1, day, hour, minute, second) -
+      TEHRAN_OFFSET_MINUTES * 60 * 1000
   )
+}
+
+/**
+ * Parse API datetimes such as `2026-09-24 08:00` / `2026-09-24T08:00:00`
+ * as Asia/Tehran wall time (not the PC timezone).
+ */
+export function parseTehranDateTime(value?: string | null): Date | null {
+  if (!value) return null
+  const normalized = String(value).trim()
+  const match = normalized.match(
+    /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/
+  )
+  if (match) {
+    return tehranWallToUtc(
+      Number(match[1]),
+      Number(match[2]),
+      Number(match[3]),
+      Number(match[4]),
+      Number(match[5]),
+      Number(match[6] || 0)
+    )
+  }
+  const parsed = Date.parse(normalized)
+  return Number.isNaN(parsed) ? null : new Date(parsed)
+}
+
+/**
+ * Whether `now` is inside an explicit API start/end window.
+ * Returns null when the strings cannot be parsed.
+ */
+export function isNowWithinTehranRange(
+  startText?: string | null,
+  endText?: string | null,
+  now: Date = new Date()
+): boolean | null {
+  const startAt = parseTehranDateTime(startText)
+  const endAt = parseTehranDateTime(endText)
+  if (!startAt || !endAt) return null
+  if (endAt.getTime() <= startAt.getTime()) {
+    return now >= startAt || now < endAt
+  }
+  return now >= startAt && now < endAt
+}
+
+/**
+ * Whether an explicit API window is already past its end.
+ * Before the start still returns false. Null when unparseable.
+ */
+export function hasTehranRangeEnded(
+  startText?: string | null,
+  endText?: string | null,
+  now: Date = new Date()
+): boolean | null {
+  const startAt = parseTehranDateTime(startText)
+  const endAt = parseTehranDateTime(endText)
+  if (!startAt || !endAt) return null
+  if (endAt.getTime() <= startAt.getTime()) {
+    return now >= endAt && now < startAt
+  }
+  return now >= endAt
 }
 
 function startOfTehranDay(date: Date): Date {

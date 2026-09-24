@@ -2,6 +2,7 @@ import type { ShiftAssignment, UserProfile } from '../../shared/types'
 import { normalizeNationalCode } from '../../shared/nationalCode'
 import {
   getShiftDurationHours,
+  isNowWithinTehranRange,
   isOnShiftNow,
   resolveCurrentShiftWindow,
 } from '../../shared/shiftTime'
@@ -148,6 +149,15 @@ function applyShiftSchedule(
   shifts: ShiftAssignment[],
   now = new Date()
 ): { profile: UserProfile; isOnShift: boolean } {
+  const fromApiDates = isNowWithinTehranRange(
+    profile.startDateTime,
+    profile.endDateTime,
+    now
+  )
+  if (fromApiDates !== null) {
+    return { profile, isOnShift: fromApiDates }
+  }
+
   if (shifts.length === 0) {
     return { profile, isOnShift: false }
   }

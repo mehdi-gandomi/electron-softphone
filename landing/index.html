@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>امدادفون | نرم‌افزار تماس مرکز پاسخگویی ۱۱۲</title>
+  <meta name="description" content="امدادفون، نرم‌افزار تماس اضطراری درگاه ملی امداد برای اپراتورهای مرکز پاسخگویی ۱۱۲." />
+  <link rel="icon" href="./logo.png" />
+  <style>
+    @font-face {
+      font-family: EstedadFD;
+      src: url("./fonts/Estedad-FD.woff2") format("woff2");
+      font-weight: 100 900;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: Vazirmatn;
+      src: url("./fonts/Vazirmatn-Regular.woff2") format("woff2");
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: Vazirmatn;
+      src: url("./fonts/Vazirmatn-Medium.woff2") format("woff2");
+      font-weight: 500;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: Vazirmatn;
+      src: url("./fonts/Vazirmatn-SemiBold.woff2") format("woff2");
+      font-weight: 600;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: Vazirmatn;
+      src: url("./fonts/Vazirmatn-Bold.woff2") format("woff2");
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: Vazirmatn;
+      src: url("./fonts/Vazirmatn-ExtraBold.woff2") format("woff2");
+      font-weight: 800 900;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    :root {
+      --red: #dc2626;
+      --red-700: #b91c1c;
+      --amber: #f59e0b;
+      --amber-600: #d97706;
+      --slate-50: #f8fafc;
+      --slate-100: #f1f5f9;
+      --slate-200: #e2e8f0;
+      --slate-300: #cbd5e1;
+      --slate-400: #94a3b8;
+      --slate-500: #64748b;
+      --slate-600: #475569;
+      --slate-700: #334155;
+      --slate-800: #1e293b;
+      --slate-900: #0f172a;
+      --slate-950: #020617;
+      --bg: var(--slate-50);
+      --surface: #ffffff;
+      --text: var(--slate-900);
+      --muted: var(--slate-600);
+      --border: #e2e8f0;
+      --card: #ffffff;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    html.dark {
+      --bg: var(--slate-900);
+      --surface: #0b1220;
+      --text: #f1f5f9;
+      --muted: #cbd5e1;
+      --border: rgba(148, 163, 184, 0.22);
+      --card: #1e293b;
+      --shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    html, body, button, input, select, textarea, a {
+      font-family: EstedadFD, Vazirmatn, Tahoma, sans-serif;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    a { color: inherit; }
+    img { max-width: 100%; }
+
+    .progress {
+      position: fixed;
+      top: 0;
+      right: 0;
+      left: 0;
+      z-index: 60;
+      height: 3px;
+      background: rgba(148, 163, 184, 0.25);
+    }
+    .progress > span {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: linear-gradient(to left, #ef4444, #dc2626);
+    }
+
+    .nav {
+      position: fixed;
+      top: 3px;
+      right: 0;
+      left: 0;
+      z-index: 50;
+      transition: 0.25s ease;
+    }
+    .nav.scrolled {
+      background: color-mix(in srgb, var(--surface) 82%, transparent);
+      backdrop-filter: blur(18px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .brand img { height: 34px; width: auto; }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+    .nav-links a {
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .nav-links a:hover { color: var(--red); }
+    .nav-actions { display: flex; align-items: center; gap: 10px; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-decoration: none;
+      border: 0;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 800;
+      border-radius: 12px;
+      padding: 11px 18px;
+      transition: 0.2s ease;
+    }
+    .btn-red {
+      background: var(--red);
+      color: #fff;
+      box-shadow: 0 10px 22px rgba(220, 38, 38, 0.28);
+    }
+    .btn-red:hover { background: var(--red-700); }
+    .btn-amber {
+      background: var(--amber);
+      color: #111827;
+      box-shadow: 0 12px 28px rgba(245, 158, 11, 0.35);
+    }
+    .btn-amber:hover { background: var(--amber-600); color: #fff; transform: translateY(-1px); }
+    .btn-outline {
+      background: transparent;
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.55);
+    }
+    html:not(.dark) .hero .btn-outline { color: var(--slate-800); border-color: rgba(15, 23, 42, 0.2); }
+    .btn-outline:hover { background: rgba(255,255,255,0.08); }
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .btn-lg { padding: 14px 26px; font-size: 17px; }
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      border: 0;
+      background: rgba(148,163,184,0.18);
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .hero {
+      min-height: 100vh;
+      position: relative;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+      padding: 110px 20px 72px;
+      color: #fff;
+    }
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(500px 500px at 90% 30%, rgba(248, 113, 113, 0.22), transparent 60%),
+        radial-gradient(420px 420px at 10% 70%, rgba(251, 191, 36, 0.14), transparent 60%),
+        linear-gradient(180deg, rgba(2,6,23,0.55), rgba(15,23,42,0.88)),
+        url("https://www.tehranpicture.ir/MediaServer/GMzeLFtlAReIzn2PvJgPxE/234336_0_2022_5_1440_879_0_jpg_0_0/%D9%85%D8%A7%D9%86%D9%88%D8%B1-%D8%A7%D9%85%D8%AF%D8%A7%D8%AF-%D9%88-%D9%86%D8%AC%D8%A7%D8%AA-%D8%AC%D9%85%D8%B9%DB%8C%D8%AA-%D9%87%D9%84%D8%A7%D9%84-%D8%A7%D8%AD%D9%85%D8%B1-31.jpg")
+        center/cover no-repeat;
+    }
+    html:not(.dark) .hero-bg {
+      background:
+        radial-gradient(500px 500px at 90% 30%, rgba(248, 113, 113, 0.18), transparent 60%),
+        linear-gradient(180deg, rgba(255,255,255,0.72), rgba(241,245,249,0.92)),
+        url("https://www.tehranpicture.ir/MediaServer/GMzeLFtlAReIzn2PvJgPxE/234336_0_2022_5_1440_879_0_jpg_0_0/%D9%85%D8%A7%D9%86%D9%88%D8%B1-%D8%A7%D9%85%D8%AF%D8%A7%D8%AF-%D9%88-%D9%86%D8%AC%D8%A7%D8%AA-%D8%AC%D9%85%D8%B9%DB%8C%D8%AA-%D9%87%D9%84%D8%A7%D9%84-%D8%A7%D8%AD%D9%85%D8%B1-31.jpg")
+        center/cover no-repeat;
+    }
+    html:not(.dark) .hero { color: var(--slate-900); }
+    .hero-inner {
+      position: relative;
+      z-index: 1;
+      max-width: 920px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    .eyebrow {
+      color: #f87171;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      margin: 0 0 12px;
+      font-size: 14px;
+    }
+    .hero h1 {
+      margin: 0;
+      font-size: clamp(2.4rem, 6vw, 4.4rem);
+      font-weight: 900;
+      line-height: 1.15;
+    }
+    .hero p.lead {
+      margin: 18px auto 0;
+      max-width: 640px;
+      color: rgba(255,255,255,0.84);
+      font-size: 1.12rem;
+    }
+    html:not(.dark) .hero p.lead { color: var(--slate-600); }
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 32px;
+    }
+
+    .wrap {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+    section { padding: 72px 0; }
+    .section-head { text-align: center; margin-bottom: 36px; }
+    .section-head h2 {
+      margin: 0;
+      font-size: clamp(1.6rem, 3vw, 2.2rem);
+      font-weight: 900;
+    }
+    .section-head p { color: var(--muted); margin: 10px 0 0; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 22px;
+      box-shadow: var(--shadow);
+    }
+    .icon-box {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      background: rgba(245, 158, 11, 0.14);
+      color: var(--amber-600);
+      margin-bottom: 14px;
+    }
+    html.dark .icon-box { color: #fbbf24; }
+    .card h3 { margin: 0 0 8px; font-size: 1.05rem; }
+    .card p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+    .steps { display: grid; gap: 14px; }
+    .step {
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      gap: 16px;
+      align-items: start;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px 20px;
+    }
+    .step-num {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      background: var(--red);
+      color: #fff;
+      font-weight: 900;
+    }
+    .step h3 { margin: 0 0 6px; }
+    .step p { margin: 0; color: var(--muted); }
+    .note {
+      margin-top: 10px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.28);
+      color: var(--text);
+      font-size: 0.92rem;
+    }
+
+    .download-banner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      background: linear-gradient(135deg, #7f1d1d, #b45309);
+      color: #fff;
+      border-radius: 22px;
+      padding: 28px;
+    }
+    .download-banner p { margin: 8px 0 0; opacity: 0.92; }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 36px 0 48px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr 1fr;
+      gap: 24px;
+    }
+    footer a { text-decoration: none; }
+    footer a:hover { color: var(--red); }
+    footer ul { list-style: none; padding: 0; margin: 10px 0 0; }
+    footer li { margin: 8px 0; }
+
+    @media (max-width: 900px) {
+      .grid, .footer-grid { grid-template-columns: 1fr; }
+      .nav-links { display: none; }
+      .step { grid-template-columns: 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; scroll-behavior: auto !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="progress" aria-hidden="true"><span id="progress"></span></div>
+
+  <nav class="nav" id="nav">
+    <div class="nav-inner">
+      <a class="brand" href="#hero">
+        <img src="https://emdad.rcs.ir/build/assets/logo-DkafoZuc.png" alt="" onerror="this.src='./logo.png'" />
+        امدادفون
+      </a>
+      <div class="nav-links">
+        <a href="#features">قابلیت‌ها</a>
+        <a href="#guide">راهنمای نصب</a>
+        <a href="https://emdad.rcs.ir/" target="_blank" rel="noopener">درگاه ملی امداد</a>
+      </div>
+      <div class="nav-actions">
+        <button class="icon-btn" type="button" id="theme-toggle" aria-label="تغییر تم">☾</button>
+        <a class="btn btn-red" href="#download">دانلود برنامه</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero" id="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-inner">
+      <img src="https://emdad.rcs.ir/build/assets/logo-DkafoZuc.png" alt="هلال احمر" style="height:72px;margin-bottom:12px" onerror="this.src='./logo.png'" />
+      <p class="eyebrow">سامانه یکپارچه ملی</p>
+      <h1>امدادفون</h1>
+      <p class="lead">نرم‌افزار تماس مرکز پاسخگویی ۱۱۲ برای اپراتورهای درگاه ملی امداد. ورود با کد ملی، رزرو داخلی، تماس اضطراری و اتصال به فرم ثبت تماس در یک برنامه ویندوز.</p>
+      <div class="cta-row">
+        <!-- لینک فایل نصب را در href زیر جایگزین کنید -->
+        <a class="btn btn-amber btn-lg" id="btn-download-app" href="APP_DOWNLOAD_URL">دانلود برنامه</a>
+        <a class="btn btn-outline btn-lg" href="#guide">راهنمای نصب</a>
+        <a class="btn btn-outline btn-lg" href="./emdad-phone-guide.pdf" download="راهنمای-نصب-امدادفون.pdf">دانلود آموزش</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="features">
+      <div class="wrap">
+        <div class="section-head">
+          <h2>قابلیت‌های امدادفون</h2>
+          <p>همه‌چیز برای پاسخگویی سریع، امن و هماهنگ با فرم تماس ۱۱۲</p>
+        </div>
+        <div class="grid">
+          <article class="card">
+            <div class="icon-box">۱</div>
+            <h3>ورود با کد ملی و شیفت</h3>
+            <p>هویت اپراتور با کد ملی بررسی می‌شود. اطلاعات شیفت امروز از سرور می‌آید و خارج از بازه شیفت، برنامه کاربر را خارج می‌کند.</p>
+          </article>
+          <article class="card">
+            <div class="icon-box">۲</div>
+            <h3>رزرو داخلی استان</h3>
+            <p>لیست داخلی‌های آزاد استان نمایش داده می‌شود. با انتخاب داخلی، خط برای شما رزرو و روی SIP ثبت می‌شود.</p>
+          </article>
+          <article class="card">
+            <div class="icon-box">۳</div>
+            <h3>تماس اضطراری SIP</h3>
+            <p>شماره‌گیری، تماس ورودی و خروجی، قطع، نگه‌داشتن، انتقال و DTMF در یک رابط جمع‌وجور مخصوص مرکز ۱۱۲.</p>
+          </article>
+          <article class="card">
+            <div class="icon-box">۴</div>
+            <h3>اتصال به فرم تماس ۱۱۲</h3>
+            <p>با نصب گواهی SSL و اعتماد فایرفاکس، شماره تماس‌گیرنده به‌صورت خودکار در فرم تماس امداد پر می‌شود.</p>
+          </article>
+          <article class="card">
+            <div class="icon-box">۵</div>
+            <h3>تاریخچه، مخاطبین و ضبط</h3>
+            <p>سوابق تماس‌های گرفته‌شده، دریافتی و بی‌پاسخ، دفترچه مخاطبین، و ضبط خودکار مکالمه در پوشه دلخواه.</p>
+          </article>
+          <article class="card">
+            <div class="icon-box">۶</div>
+            <h3>صدا، زنگ و تنظیمات</h3>
+            <p>انتخاب میکروفون و بلندگو، زنگ پیش‌فرض، مزاحم نشوید، پاسخ خودکار، حداقل‌سازی به سینی و انتقال تماس.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="guide" style="background: color-mix(in srgb, var(--bg) 88%, #dc2626 6%)">
+      <div class="wrap">
+        <div class="section-head">
+          <h2>راهنمای نصب و استفاده</h2>
+          <p>مراحل را به ترتیب انجام دهید تا امدادفون به فرم تماس ۱۱۲ وصل شود</p>
+        </div>
+        <div class="steps">
+          <article class="step">
+            <div class="step-num">۱</div>
+            <div>
+              <h3>دانلود و نصب برنامه</h3>
+              <p>دکمه «دانلود برنامه» را بزنید، فایل نصب ویندوز را اجرا کنید و امدادفون را نصب نمایید. پس از نصب، برنامه را باز کنید.</p>
+            </div>
+          </article>
+          <article class="step">
+            <div class="step-num">۲</div>
+            <div>
+              <h3>ورود با کد ملی</h3>
+              <p>کد ملی را وارد کنید و «بررسی کاربر» را بزنید. پس از تأیید، رمز عبور را وارد کرده و «ورود» را انتخاب کنید تا مشخصات شما نمایش داده شود.</p>
+            </div>
+          </article>
+          <article class="step">
+            <div class="step-num">۳</div>
+            <div>
+              <h3>انتخاب داخلی آزاد</h3>
+              <p>از میان داخلی‌های موجود استان، داخلی موردنظر را انتخاب کنید و «انتخاب» را بزنید تا داخلی آزاد به شما اختصاص داده شود.</p>
+            </div>
+          </article>
+          <article class="step">
+            <div class="step-num">۴</div>
+            <div>
+              <h3>برقراری تماس</h3>
+              <p>در صفحه شماره‌گیر، شماره را وارد کنید و دکمه تماس را بزنید. تماس‌های اخیر را در بخش تاریخچه (دریافتی، گرفته‌شده و بی‌پاسخ) ببینید.</p>
+            </div>
+          </article>
+          <article class="step">
+            <div class="step-num">۵</div>
+            <div>
+              <h3>مخاطبین</h3>
+              <p>از منوی مخاطبین وارد مدیریت مخاطبان شوید، «افزودن» را بزنید، فیلدها را تکمیل کنید و مخاطب را ذخیره نمایید.</p>
+            </div>
+          </article>
+          <article class="step">
+            <div class="step-num">۶</div>
+            <div>
+              <h3>تنظیمات صدا و حساب</h3>
+              <p>در تنظیمات &gt; حساب می‌توانید حساب SIP شامل نام نمایشی، داخلی، نام کاربری، رمز عبور و آدرس سرور را ثبت کنید. در بخش صدا، میکروفون، بلندگو، بلندی زنگ و ضبط خودکار تماس‌ها را تنظیم کنید. زبان و تم روشن/تیره هم در بخش پیشرفته است.</p>
+            </div>
+          </article>
+          <article class="step">
+            <div class="step-num">۷</div>
+            <div>
+              <h3>نصب گواهی SSL ویندوز</h3>
+              <p>برای اتصال فرم تماس به امدادفون و پر شدن خودکار فیلدهای تماس، گواهی SSL برنامه باید روی ویندوز نصب شود تا خطای SSL سوکت برطرف گردد.</p>
+              <div class="note">از تنظیمات، «نصب گواهی SSL در ویندوز» را بزنید. روی پیام برنامه گزینه OK و روی پیام امنیتی ویندوز گزینه Yes را انتخاب کنید. این پیام خطرناک نیست.</div>
+            </div>
+          </article>
+          <article class="step">
+            <div class="step-num">۸</div>
+            <div>
+              <h3>فعال‌سازی اعتماد فایرفاکس</h3>
+              <p>فایرفاکس گواهی self-signed را به‌صورت پیش‌فرض قبول نمی‌کند. پایین صفحه برنامه، «فعال‌سازی اعتماد فایرفاکس به ویندوز» را بزنید و OK را تأیید کنید.</p>
+            </div>
+          </article>
+          <article class="step">
+            <div class="step-num">۹</div>
+            <div>
+              <h3>تماس ورودی و فرم ۱۱۲</h3>
+              <p>در پنجره تماس ورودی اضطراری، شماره تماس‌گیرنده نمایش داده می‌شود. با پاسخ سبز، اگر اتصال به امداد برقرار باشد فرم تماس باز می‌شود و فیلدها تکمیل می‌گردند. برای گزارش مزاحم، گزینه «مزاحم» را انتخاب، نوع را ثبت و در پایان تماس را قطع کنید.</p>
+            </div>
+          </article>
+          <article class="step">
+            <div class="step-num">۱۰</div>
+            <div>
+              <h3>وضعیت اتصال فرم</h3>
+              <p>اگر ارتباط بین امدادفون و فرم برقرار باشد، سمت چپ فرم به‌جای خطا گزینه «متصل» را می‌بینید. کنار وضعیت اتصال، آیکون چرخ‌دنده آدرس سوکت و پورت را نشان می‌دهد و با «تست اتصال» می‌توانید وضعیت را بررسی کنید.</p>
+            </div>
+          </article>
+        </div>
+
+        <div class="download-banner" style="margin-top:28px">
+          <div>
+            <h3 style="margin:0;font-size:1.3rem">دانلود آموزش نصب</h3>
+            <p>همین فایل راهنمای تصویری امدادفون را دریافت کنید و مرحله‌به‌مرحله جلو بروید.</p>
+          </div>
+          <a class="btn btn-amber btn-lg" href="./emdad-phone-guide.pdf" download="راهنمای-نصب-امدادفون.pdf">دانلود آموزش (PDF)</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="download">
+      <div class="wrap">
+        <div class="download-banner">
+          <div>
+            <h3 style="margin:0;font-size:1.3rem">دانلود برنامه امدادفون</h3>
+            <p>نسخه ویندوز مرکز پاسخگویی ۱۱۲. پس از نصب، راهنمای بالا را برای اتصال به فرم تماس دنبال کنید.</p>
+          </div>
+          <!-- لینک فایل نصب را در href زیر جایگزین کنید -->
+          <a class="btn btn-amber btn-lg" href="APP_DOWNLOAD_URL">دانلود برنامه ویندوز</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap footer-grid">
+      <div>
+        <strong style="color:var(--text)">امدادفون</strong>
+        <p>نرم‌افزار تماس اضطراری درگاه ملی امداد برای هماهنگی اپراتور، داخلی و فرم ثبت تماس ۱۱۲.</p>
+      </div>
+      <div>
+        <strong style="color:var(--text)">دسترسی سریع</strong>
+        <ul>
+          <li><a href="#features">قابلیت‌ها</a></li>
+          <li><a href="#guide">راهنمای نصب</a></li>
+          <li><a href="./emdad-phone-guide.pdf" download="راهنمای-نصب-امدادفون.pdf">دانلود آموزش</a></li>
+        </ul>
+      </div>
+      <div>
+        <strong style="color:var(--text)">درگاه ملی امداد</strong>
+        <ul>
+          <li><a href="https://emdad.rcs.ir/" target="_blank" rel="noopener">صفحه اصلی سامانه</a></li>
+          <li><a href="https://emdad.rcs.ir/learn" target="_blank" rel="noopener">دفترچه راهنما</a></li>
+          <li><a href="https://emdad.rcs.ir/help" target="_blank" rel="noopener">مرکز راهنما</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="wrap" style="margin-top:24px">تمامی حقوق برای درگاه ملی امداد محفوظ است.</div>
+  </footer>
+
+  <script>
+    const nav = document.getElementById("nav");
+    const progress = document.getElementById("progress");
+    const themeToggle = document.getElementById("theme-toggle");
+
+    const saved = localStorage.getItem("emdadphone-theme");
+    if (saved === "light") document.documentElement.classList.remove("dark");
+    if (saved === "dark") document.documentElement.classList.add("dark");
+
+    themeToggle.addEventListener("click", () => {
+      const dark = document.documentElement.classList.toggle("dark");
+      localStorage.setItem("emdadphone-theme", dark ? "dark" : "light");
+      themeToggle.textContent = dark ? "☾" : "☀";
+    });
+    themeToggle.textContent = document.documentElement.classList.contains("dark") ? "☾" : "☀";
+
+    const onScroll = () => {
+      nav.classList.toggle("scrolled", window.scrollY > 40);
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      progress.style.width = (max > 0 ? (window.scrollY / max) * 100 : 0) + "%";
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+
+    document.querySelectorAll('a[href="APP_DOWNLOAD_URL"]').forEach((link) => {
+      link.addEventListener("click", (event) => {
+        event.preventDefault();
+        alert("لینک دانلود برنامه را در href دکمه «دانلود برنامه» جایگزین کنید.");
+      });
+    });
+  </script>
+</body>
+</html>

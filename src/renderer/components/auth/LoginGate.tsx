@@ -7,7 +7,27 @@ import {
 } from '../../lib/mockAuth'
 import { formatJalaliDateLong } from '../../lib/persianDate'
 import { nationalCodesEqual } from '../../../shared/nationalCode'
+import { isNowWithinTehranRange } from '../../../shared/shiftTime'
 import type { LatestShiftLookup, UserProfile } from '../../../shared/types'
+
+function resolveLoginOnShift(
+  profile: UserProfile,
+  result: {
+    hasShift?: boolean
+    shiftAccess?: { isWithinShift?: boolean } | null
+  },
+  previous: LatestShiftLookup | null | undefined,
+  sameUser: boolean
+): boolean {
+  if (isNowWithinTehranRange(profile.startDateTime, profile.endDateTime) === true) {
+    return true
+  }
+  return (
+    result.shiftAccess?.isWithinShift === true ||
+    result.hasShift === false ||
+    (sameUser ? previous?.isOnShift === true : false)
+  )
+}
 
 interface LoginGateProps {
   allowSkip?: boolean
@@ -118,10 +138,7 @@ export function LoginGate({
               : sameUser
                 ? previous?.hasShift === true
                 : false,
-          isOnShift:
-            result.shiftAccess?.isWithinShift === true ||
-            result.hasShift === false ||
-            (sameUser ? previous?.isOnShift === true : false),
+          isOnShift: resolveLoginOnShift(result.profile, result, previous, sameUser),
           profile: result.profile,
           shifts:
             result.shifts && result.shifts.length > 0
@@ -178,10 +195,7 @@ export function LoginGate({
               : sameUser
                 ? previous?.hasShift === true
                 : false,
-          isOnShift:
-            result.shiftAccess?.isWithinShift === true ||
-            result.hasShift === false ||
-            (sameUser ? previous?.isOnShift === true : false),
+          isOnShift: resolveLoginOnShift(result.profile, result, previous, sameUser),
           profile: result.profile,
           shifts:
             result.shifts && result.shifts.length > 0
