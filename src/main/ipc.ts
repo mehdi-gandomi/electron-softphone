@@ -107,6 +107,7 @@ export function initIpc(win: BrowserWindow) {
     return settings
   })
 
+  void getSettings()
   void syncSocketServerFromSettings()
 
   // Accounts
@@ -358,8 +359,10 @@ export function initIpc(win: BrowserWindow) {
     return isTlsCertificateTrusted()
   })
 
-  ipcMain.handle('socket:install-tls-cert', () => {
-    return installTlsCertificateToWindows()
+  ipcMain.handle('socket:install-tls-cert', async () => {
+    const result = await installTlsCertificateToWindows()
+    await syncSocketServerFromSettings(true)
+    return result
   })
 
   ipcMain.handle('socket:firefox-enterprise-roots-status', () => {

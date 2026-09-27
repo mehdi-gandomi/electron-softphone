@@ -10,11 +10,14 @@ import { Server as SocketIoServer, type Socket } from 'socket.io'
 import { getSetting } from './store'
 import { addLog } from './sip/transport'
 import { normalizeNationalCode } from '../shared/nationalCode'
+import { getBuildIntegrationDefaults } from '../shared/buildConfig'
 import type { CallInfo, SocketServerSettings, UserAccessState, UserProfile } from '../shared/types'
 
 let httpServer: http.Server | null = null
 let httpsServer: https.Server | null = null
-let io: SocketIoServer | null = null
+/** Separate Socket.IO instances — attaching one Server to HTTP+HTTPS replaces engine.io. */
+let httpIo: SocketIoServer | null = null
+let httpsIo: SocketIoServer | null = null
 let listeningKey = ''
 let lastExternalCheck: { ok: boolean; at: number; detail: string } | null = null
 let activeHttpPort = 3920
@@ -456,18 +459,65 @@ function tlsToHttpsOptions(tls: TlsHttpsOptions): https.ServerOptions {
 
 /** Read socket settings without applyBuildIntegrations side effects. */
 function peekSocketSettings(): SocketServerSettings {
+  const fallback = getBuildIntegrationDefaults().socketServer
+  const fallbackPort = Number(fallback.port) > 0 ? Number(fallback.port) : 3920
   try {
     const raw = getSetting('socketServer')
     if (raw && typeof raw === 'object') {
       return {
-        enabled: Boolean(raw.enabled),
-        host: String(raw.host || '0.0.0.0'),
-        port: Number(raw.port) > 0 ? Number(raw.port) : 3920,
-        authToken: String(raw.authToken || ''),
+        enabled: typeof raw.enabled === 'boolean' ? raw.enabled : Boolean(fallback.enabled),
+        host: String(raw.host || fallback.host || '0.0.0.0'),
+        port: Number(raw.port) > 0 ? Number(raw.port) : fallbackPort,
+        authToken: String(raw.authToken || fallback.authToken || ''),
       }
     }
   } catch {}
-  return { enabled: false, host: '0.0.0.0', port: 3920, authToken: '' }
+  return {
+    enabled: Boolean(fallback.enabled),
+    host: String(fallback.host || '0.0.0.0'),
+    port: fallbackPort,
+    authToken: String(fallback.authToken || ''),
+  }
+}
+
+function ioOptions() {
+  return {
+    cors: {
+      origin: true,
+      methods: ['GET', 'POST'] as string[],
+      allowedHeaders: ['Authorization', 'Content-Type'],
+      credentials: false,
+    },
+    allowEIO3: true,
+    transports: ['polling', 'websocket'] as ('polling' | 'websocket')[],
+  }
+}
+
+function activeIoServers(): SocketIoServer[] {
+  return [httpIo, httpsIo].filter((server): server is SocketIoServer => Boolean(server))
+}
+
+function clientCount(): number {
+  return activeIoServers().reduce(
+    (sum, server) => sum + (server.engine?.clientsCount ?? 0),
+    0
+  )
+}
+
+function closeIo(server: SocketIoServer | null): Promise<void> {
+  if (!server) return Promise.resolve()
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, 2000)
+    try {
+      server.close(() => {
+        clearTimeout(timer)
+        resolve()
+      })
+    } catch {
+      clearTimeout(timer)
+      resolve()
+    }
+  })
 }
 
 function configKey(cfg: SocketServerSettings): string {
@@ -573,6 +623,8 @@ function buildCallPayload(event: string, call: CallInfo, extra?: Record<string, 
     call_id: call.id,
     sip_call_id: call.callId || '',
     caller_id: call.remoteNumber,
+    phone: call.remoteNumber,
+    mobile: call.remoteNumber,
     caller_name: call.remoteName,
     extension: call.localNumber,
     direction: call.direction,
@@ -684,31 +736,32 @@ function listenServer(
 }
 
 export async function stopSocketServer(): Promise<void> {
-  const currentIo = io
+  const currentHttpIo = httpIo
+  const currentHttpsIo = httpsIo
   const currentHttp = httpServer
   const currentHttps = httpsServer
-  const wasRunning = Boolean(currentIo || currentHttp || currentHttps)
-  io = null
+  const wasRunning = Boolean(currentHttpIo || currentHttpsIo || currentHttp || currentHttps)
+  httpIo = null
+  httpsIo = null
   httpServer = null
   httpsServer = null
   listeningKey = ''
   lastExternalCheck = null
 
-  if (currentIo) {
-    await new Promise<void>((resolve) => {
-      currentIo.close(() => resolve())
+  await closeIo(currentHttpIo)
+  await closeIo(currentHttpsIo)
+
+  const closeIfListening = (server: http.Server | https.Server | null) =>
+    new Promise<void>((resolve) => {
+      if (!server || !server.listening) {
+        resolve()
+        return
+      }
+      server.close(() => resolve())
     })
-  }
-  if (currentHttp) {
-    await new Promise<void>((resolve) => {
-      currentHttp.close(() => resolve())
-    })
-  }
-  if (currentHttps) {
-    await new Promise<void>((resolve) => {
-      currentHttps.close(() => resolve())
-    })
-  }
+
+  await closeIfListening(currentHttp)
+  await closeIfListening(currentHttps)
   if (wasRunning) {
     logSocket(
       'info',
@@ -717,7 +770,10 @@ export async function stopSocketServer(): Promise<void> {
   }
 }
 
-export async function startSocketServer(cfg?: SocketServerSettings): Promise<void> {
+export async function startSocketServer(
+  cfg?: SocketServerSettings,
+  force = false
+): Promise<void> {
   const settings = cfg ?? peekSocketSettings()
   if (!settings?.enabled) {
     await stopSocketServer()
@@ -728,7 +784,6 @@ export async function startSocketServer(cfg?: SocketServerSettings): Promise<voi
   const port = Number(settings.port) > 0 ? Number(settings.port) : 3920
   const httpsPort = port + 1
   const authToken = (settings.authToken || '').trim()
-  const secureNeeded = true
   const nextKey = configKey({
     enabled: true,
     host: '0.0.0.0',
@@ -737,13 +792,14 @@ export async function startSocketServer(cfg?: SocketServerSettings): Promise<voi
   })
 
   if (
-    io &&
-    httpServer &&
-    listeningKey === nextKey &&
-    httpServer.listening &&
-    (!secureNeeded || (httpsServer?.listening ?? false))
+    !force &&
+    httpIo &&
+    httpServer?.listening &&
+    httpsIo &&
+    httpsServer?.listening &&
+    listeningKey === nextKey
   ) {
-    logSocket('info', `Socket.IO already running — HTTP :${port}` + (secureNeeded ? ` HTTPS :${httpsPort}` : ''))
+    logSocket('info', `Socket.IO already running — HTTP :${port} HTTPS :${httpsPort}`)
     return
   }
 
@@ -765,19 +821,14 @@ export async function startSocketServer(cfg?: SocketServerSettings): Promise<voi
     )
   }
 
-  const socketServer = new SocketIoServer({
-    cors: {
-      origin: true,
-      methods: ['GET', 'POST'],
-      allowedHeaders: ['Authorization', 'Content-Type'],
-      credentials: false,
-    },
-    allowEIO3: true,
-    transports: ['polling', 'websocket'],
-  })
-  attachSocketHandlers(socketServer, authToken)
-  socketServer.attach(plain)
-  if (secure) socketServer.attach(secure)
+  const opts = ioOptions()
+  const nextHttpIo = new SocketIoServer(plain, opts)
+  attachSocketHandlers(nextHttpIo, authToken)
+  let nextHttpsIo: SocketIoServer | null = null
+  if (secure) {
+    nextHttpsIo = new SocketIoServer(secure, opts)
+    attachSocketHandlers(nextHttpsIo, authToken)
+  }
 
   await listenServer(plain, port, 'HTTP')
   if (secure) {
@@ -786,6 +837,8 @@ export async function startSocketServer(cfg?: SocketServerSettings): Promise<voi
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       logSocket('error', `HTTPS listen failed: ${message}`)
+      await closeIo(nextHttpsIo)
+      nextHttpsIo = null
       try {
         secure.close()
       } catch {}
@@ -795,7 +848,8 @@ export async function startSocketServer(cfg?: SocketServerSettings): Promise<voi
 
   httpServer = plain
   httpsServer = secure
-  io = socketServer
+  httpIo = nextHttpIo
+  httpsIo = nextHttpsIo
   listeningKey = nextKey
 
   logSocket(
@@ -851,8 +905,8 @@ export function getSocketServerStatus(): {
   const settings = peekSocketSettings()
   const port = Number(settings?.port) > 0 ? Number(settings.port) : 3920
   const httpsPort = port + 1
-  const running = Boolean(io && httpServer && httpServer.listening)
-  const httpsRunning = Boolean(io && httpsServer && httpsServer.listening)
+  const running = Boolean(httpIo && httpServer && httpServer.listening)
+  const httpsRunning = Boolean(httpsIo && httpsServer && httpsServer.listening)
   const reachable = Boolean(running && lastExternalCheck?.ok)
   return {
     running,
@@ -864,7 +918,7 @@ export function getSocketServerStatus(): {
     httpsPort,
     url: `http://127.0.0.1:${port}`,
     httpsUrl: `https://127.0.0.1:${httpsPort}`,
-    clients: running ? io?.engine?.clientsCount ?? 0 : 0,
+    clients: clientCount(),
     detail: lastExternalCheck?.detail
       || (running
         ? httpsRunning
@@ -874,7 +928,7 @@ export function getSocketServerStatus(): {
   }
 }
 
-export async function syncSocketServerFromSettings(): Promise<void> {
+export async function syncSocketServerFromSettings(force = false): Promise<void> {
   try {
     // Always use the stored socketServer value (do not fall back to getSettings()
     // which may re-apply build.json and undo a disable toggle).
@@ -885,7 +939,7 @@ export async function syncSocketServerFromSettings(): Promise<void> {
         ? `Sync socket server — starting (port ${cfg.port}, https ${cfg.port + 1})`
         : 'Sync socket server — disabled, stopping HTTP/HTTPS'
     )
-    await startSocketServer(cfg)
+    await startSocketServer(cfg, force)
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     logSocket('error', `Failed to start Socket.IO: ${message}`)
@@ -899,40 +953,59 @@ function emitSocketEvent(
   extra?: Record<string, unknown>
 ): boolean {
   const settings = peekSocketSettings()
-  if (!settings?.enabled || !io) return false
+  const servers = activeIoServers()
+  if (!settings?.enabled || servers.length === 0) return false
   const payload = buildCallPayload(event, call, extra)
-  const clients = io.engine?.clientsCount ?? 0
+  const clients = clientCount()
   logSocket(
     'sent',
     `Emit ${event} → ${clients} client(s) call=${call.id} caller=${call.remoteNumber}`,
     JSON.stringify(payload, null, 2)
   )
-  io.emit(event, payload)
+  for (const server of servers) {
+    server.emit(event, payload)
+  }
   return true
 }
 
 export function emitIncomingCall(call: CallInfo): void {
-  emitSocketEvent('incoming_call', call)
+  void emitSocketEventWhenReady('incoming_call', call)
 }
 
 export function emitCallAnswered(call: CallInfo): void {
-  emitSocketEvent('call_answered', call)
+  void emitSocketEventWhenReady('call_answered', call)
 }
 
 export function emitCallEnded(call: CallInfo): void {
-  emitSocketEvent('call_ended', call)
+  void emitSocketEventWhenReady('call_ended', call)
 }
 
-export function emitNuisanceReport(
+async function emitSocketEventWhenReady(
+  event: string,
+  call: CallInfo,
+  extra?: Record<string, unknown>
+): Promise<boolean> {
+  const settings = peekSocketSettings()
+  if (!settings?.enabled) return false
+  if (activeIoServers().length === 0) {
+    await startSocketServer(settings)
+  }
+  return emitSocketEvent(event, call, extra)
+}
+
+export async function emitNuisanceReport(
   call: CallInfo,
   nuisanceType: number,
   nuisanceLabel: string
-): { success: boolean; error?: string; clients?: number } {
+): Promise<{ success: boolean; error?: string; clients?: number }> {
   const settings = peekSocketSettings()
   if (!settings?.enabled) {
     return { success: false, error: 'Socket server disabled' }
   }
-  if (!io) {
+  if (activeIoServers().length === 0) {
+    await startSocketServer(settings)
+  }
+  if (activeIoServers().length === 0) {
     return { success: false, error: 'Socket server not running' }
   }
   const ok = emitSocketEvent('nuisance_report', call, {
@@ -941,32 +1014,38 @@ export function emitNuisanceReport(
   })
   return {
     success: ok,
-    clients: io.engine?.clientsCount ?? 0,
+    clients: clientCount(),
     error: ok ? undefined : 'Emit failed',
   }
 }
 
 /** Broadcast logged-in operator to all form clients (call after login). */
-export function emitOperatorInfo(
+export async function emitOperatorInfo(
   userAccess?: UserAccessState | null
-): { success: boolean; error?: string; clients?: number } {
+): Promise<{ success: boolean; error?: string; clients?: number }> {
   const settings = peekSocketSettings()
   if (!settings?.enabled) {
     return { success: false, error: 'Socket server disabled' }
   }
-  if (!io) {
+  if (activeIoServers().length === 0) {
+    await startSocketServer(settings)
+  }
+  const servers = activeIoServers()
+  if (servers.length === 0) {
     return { success: false, error: 'Socket server not running' }
   }
   const payload = buildOperatorPayload(userAccess)
   if (!payload) {
     return { success: false, error: 'No operator profile to emit' }
   }
-  const clients = io.engine?.clientsCount ?? 0
+  const clients = clientCount()
   logSocket(
     'sent',
     `Emit operator_info → ${clients} client(s)`,
     JSON.stringify(payload, null, 2)
   )
-  io.emit('operator_info', payload)
+  for (const server of servers) {
+    server.emit('operator_info', payload)
+  }
   return { success: true, clients }
 }

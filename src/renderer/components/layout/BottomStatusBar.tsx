@@ -53,7 +53,11 @@ export function BottomStatusBar({
         if (cancelled) return
         setSocketRunning(Boolean(status.running))
         setSocketReachable(Boolean(status.reachable))
-        setSocketUrl(status.url || `http://127.0.0.1:${status.port || 3920}`)
+        setSocketUrl(
+          status.httpsRunning && status.httpsUrl
+            ? status.httpsUrl
+            : status.url || `http://127.0.0.1:${status.port || 3920}`
+        )
         setSocketDetail(status.detail || '')
       } catch {
         if (!cancelled) {
