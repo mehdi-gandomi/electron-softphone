@@ -11,6 +11,7 @@ import { getSetting } from './store'
 import { addLog } from './sip/transport'
 import { normalizeNationalCode } from '../shared/nationalCode'
 import { getBuildIntegrationDefaults } from '../shared/buildConfig'
+import { formatTehranWallDateTime } from '../shared/clockGate'
 import type { CallInfo, SocketServerSettings, UserAccessState, UserProfile } from '../shared/types'
 
 let httpServer: http.Server | null = null
@@ -613,11 +614,25 @@ function buildOperatorPayload(userAccess?: UserAccessState | null): Record<strin
   }
 }
 
+function eventMoment(event: string, call: CallInfo): Date {
+  if (event === 'call_answered' && call.answerTime > 0) {
+    return new Date(call.answerTime)
+  }
+  if (call.startTime > 0) {
+    return new Date(call.startTime)
+  }
+  if (call.answerTime > 0) {
+    return new Date(call.answerTime)
+  }
+  return new Date()
+}
+
 function buildCallPayload(event: string, call: CallInfo, extra?: Record<string, unknown>) {
   const durationSec =
     call.answerTime > 0
       ? Math.max(0, Math.floor((Date.now() - call.answerTime) / 1000))
       : call.duration
+  const tehranAt = formatTehranWallDateTime(eventMoment(event, call))
   return {
     event,
     call_id: call.id,
@@ -630,7 +645,10 @@ function buildCallPayload(event: string, call: CallInfo, extra?: Record<string, 
     direction: call.direction,
     issabel_id: call.issabelId || '',
     duration: durationSec,
-    timestamp: new Date().toISOString(),
+    timestamp: tehranAt,
+    call_time_info: tehranAt,
+    answered: tehranAt,
+    answered_at: tehranAt,
     ...(extra || {}),
   }
 }

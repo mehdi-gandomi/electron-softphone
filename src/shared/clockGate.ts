@@ -53,6 +53,31 @@ export function clientTimezoneIsValid(timeZone: string, now = new Date()): boole
   return isAsiaTehranTimezone(timeZone) && isTehranUtcOffset(now)
 }
 
+/**
+ * ASCII Asia/Tehran wall clock for APIs/forms, e.g. `2026-09-28 12:20:00`.
+ * Naive (no `Z`) so Carbon/the 112 form keep Tehran numbers instead of UTC.
+ */
+export function formatTehranWallDateTime(date: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: TEHRAN_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(date)
+  const map: Record<string, string> = {}
+  for (const part of parts) {
+    if (part.type !== 'literal') map[part.type] = part.value
+  }
+  const hourRaw = Number(map.hour)
+  const hour = hourRaw === 24 ? 0 : hourRaw
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${map.year}-${map.month}-${map.day} ${pad(hour)}:${map.minute}:${map.second}`
+}
+
 export function formatInZone(ms: number, timeZone?: string): string {
   try {
     return new Date(ms).toLocaleString('fa-IR', {
